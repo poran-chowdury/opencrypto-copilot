@@ -10,7 +10,7 @@ RUN --mount=type=cache,target=/root/.m2 mvn -B -q -pl services/${SERVICE} -am -D
  && cp services/${SERVICE}/target/${SERVICE}-0.1.0-SNAPSHOT.jar /workspace/app.jar
 
 # Stage 2: small JRE image, non-root user, container-aware heap sizing.
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:24-jre
 RUN groupadd --system app && useradd --system --gid app --home /app app
 WORKDIR /app
 COPY --from=build /workspace/app.jar app.jar
