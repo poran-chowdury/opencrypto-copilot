@@ -13,7 +13,7 @@
     <spring-boot.version>3.4.10</spring-boot.version>
     <spring-cloud.version>2024.0.2</spring-cloud.version>
     <resilience4j.version>2.2.0</resilience4j.version>
-    <shedlock.version>5.16.0</shedlock.version>
+    <shedlock.version>7.10.1</shedlock.version>
     <wiremock.version>3.9.2</wiremock.version>
     <!-- OpenTelemetry instrumentation release built against the OpenTelemetry API that Spring Boot manages (1.43.x) -->
     <opentelemetry-instrumentation.version>2.9.0-alpha</opentelemetry-instrumentation.version>
