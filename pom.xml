@@ -11,7 +11,7 @@
     <maven.compiler.release>21</maven.compiler.release>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-boot.version>3.4.10</spring-boot.version>
-    <spring-cloud.version>2024.0.2</spring-cloud.version>
+    <spring-cloud.version>2025.1.4</spring-cloud.version>
     <resilience4j.version>2.2.0</resilience4j.version>
     <shedlock.version>5.16.0</shedlock.version>
     <wiremock.version>3.9.2</wiremock.version>
