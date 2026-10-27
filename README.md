@@ -80,8 +80,7 @@ scripts/load-test.sh                           # k6 load test (PROFILE=ramp); se
 Every pull request runs [CI](.github/workflows/ci.yml): unit and Testcontainers tests, the frontend
 build, and the axe accessibility lab. Every push to `main` runs CI again and then
 [CD](.github/workflows/cd.yml) publishes one Docker image per service to GitHub Container Registry;
-a `v*.*.*` tag also publishes versioned images and a GitHub Release. Dependabot opens weekly update
-PRs. How and why it's set up this way: [docs/engineering/12-github-ci-cd.md](docs/engineering/12-github-ci-cd.md).
+a `v*.*.*` tag also publishes versioned images and a GitHub Release. How and why it's set up this way: [docs/engineering/12-github-ci-cd.md](docs/engineering/12-github-ci-cd.md).
 
 ## Repository layout
 

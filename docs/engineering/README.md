@@ -26,7 +26,7 @@ the same shape:
 | 9 | [Frontend architecture](09-frontend.md) | Tailwind v4 + shadcn/ui + Lightweight Charts "pro exchange" UI, server state with React Query, error UX, code splitting, tested accessibility |
 | 10 | [Real bugs we hit](10-bugs-and-lessons.md) | 24 real problems from building this project, with root cause and fix: your "hardest bug" interview stories |
 | 11 | [Load testing](11-load-testing.md) | k6 open-model load tests, saturation and Little's law, diagnosing with traces, metastable failure, correctness under overload |
-| 12 | [Publishing on GitHub with CI/CD](12-github-ci-cd.md) | GitHub Actions, reusable workflows, matrix builds, publishing images to GHCR, SemVer releases, branch rulesets, Dependabot, keeping secrets out of a public repo |
+| 12 | [Publishing on GitHub with CI/CD](12-github-ci-cd.md) | GitHub Actions, reusable workflows, matrix builds, publishing images to GHCR, SemVer releases, branch rulesets, keeping secrets out of a public repo |
 | — | [Resume bullets & interview stories](resume.md) | How to describe this project |
 
 ## The system in one picture

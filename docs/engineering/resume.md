@@ -32,7 +32,7 @@ Redis, RabbitMQ, React 19/TypeScript, Docker, Prometheus/Grafana, Testcontainers
 - Set up **CI/CD with GitHub Actions**: every PR runs unit, Testcontainers and accessibility tests;
   merges to `main` reuse the same CI workflow as a gate, then a matrix job publishes 8 Docker images
   to GitHub Container Registry with immutable `sha-` and SemVer tags and layer caching; version tags
-  create a GitHub Release. Branch rulesets require green checks, and Dependabot keeps dependencies current.
+  create a GitHub Release. Branch rulesets require green checks before merging.
 - Wrote **49 automated tests**, including Testcontainers integration tests against real
   Postgres/Redis/RabbitMQ and WireMock-scripted third-party failures, plus Playwright + axe
   accessibility checks in CI.

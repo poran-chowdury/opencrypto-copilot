@@ -111,7 +111,6 @@ pulls instead of building. `OPENCRYPTO_TAG=1.2.0` pins a release; `sha-1a2b3c4` 
 | [`LICENSE`](../../LICENSE) (MIT) | Without a license, public code is "all rights reserved": readable but not reusable. |
 | [`.gitattributes`](../../.gitattributes) | Stores text with LF. A `run-local.sh` committed with CRLF fails on Linux with `/usr/bin/env: 'bash\r': No such file or directory`. |
 | [`.gitignore`](../../.gitignore) | Keeps `.env`, `target/`, `node_modules/`, `.run/` (jars and logs) and test reports out. |
-| [`.github/dependabot.yml`](../../.github/dependabot.yml) | Weekly PRs for Maven, npm, Actions and base-image updates, minor/patch grouped. CI tests each one. |
 | [`pull_request_template.md`](../../.github/pull_request_template.md), [`ISSUE_TEMPLATE/`](../../.github/ISSUE_TEMPLATE/) | Every PR says what, why and how it was verified. |
 | [`CONTRIBUTING.md`](../../CONTRIBUTING.md) | Branch → PR → green CI → squash-merge → tag. |
 
@@ -195,7 +194,7 @@ Repo **About** (⚙ next to it): description, topics (`spring-boot`, `microservi
 *Packages* and *Releases*. Pin the repo on your profile. Add a screenshot or GIF of the Trade page to
 the README; it's the first thing people look at.
 
-Also turn on **Settings → Code security**: Dependabot alerts, secret scanning with push protection
+Also turn on **Settings → Code security**: secret scanning with push protection
 (blocks a push that contains a known token format), and CodeQL "default setup" for Java and
 TypeScript. They're all free on public repos and need no YAML.
 
@@ -224,8 +223,13 @@ This publishes `:0.1.0` and `:0.1` images plus a GitHub Release. Versions follow
   contributors. Never use `pull_request_target` to "fix" that without understanding it: it runs
   with write access while the PR's code is untrusted.
 - **Third-party actions are code you run with your token.** We use only official `actions/*` and
-  `docker/*`. Stricter setups pin them by commit SHA (`uses: docker/login-action@<sha>`), and
-  Dependabot keeps the SHAs updated.
+  `docker/*`. Stricter setups pin them by commit SHA (`uses: docker/login-action@<sha>`) and
+  update the SHAs with a bot.
+- **Automated dependency PRs without limits are noise.** We tried Dependabot, and its first scan
+  opened 12 PRs at once, mostly major upgrades (Spring Boot 3 → 4, TypeScript 5 → 7, Vite 6 → 8,
+  Node 20 → 26). Each major version needs real migration work, so we removed it and upgrade by hand
+  instead. If you add a bot again, start with `ignore: [{dependency-name: "*", update-types:
+  ["version-update:semver-major"]}]` and `open-pull-requests-limit`.
 - **Testcontainers needs Docker.** It works on `ubuntu-latest`, but not on GitHub's Windows or macOS
   runners.
 - **`npm install` in CI** can resolve different versions than your laptop did. Use `npm ci`: it
