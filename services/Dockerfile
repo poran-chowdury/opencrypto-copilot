@@ -1,6 +1,6 @@
 # One Dockerfile for every Java service: docker build --build-arg SERVICE=wallet-service -f services/Dockerfile .
 # Stage 1 builds only that module (+ the shared library) with a cached Maven repository.
-FROM maven:3.9-eclipse-temurin-21 AS build
+FROM maven:3.9-eclipse-temurin-26 AS build
 ARG SERVICE
 WORKDIR /workspace
 COPY pom.xml .
