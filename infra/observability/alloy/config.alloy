@@ -1,0 +1,87 @@
+// Grafana Alloy: collects the services' JSON logs and ships them to Loki.
+// Two sources, one processing pipeline:
+//   host mode   (scripts/run-local.*)  -> services write ECS JSON files to .run/logs/json/*.json
+//   docker mode (docker compose up)    -> containers write ECS JSON to stdout (json-logs profile)
+// UI with the live pipeline graph: http://localhost:12345
+
+// ---------------------------------------------------------------- host mode: tail files
+local.file_match "host_services" {
+  path_targets = [{"__path__" = "/var/log/opencrypto/*.json", "source" = "host"}]
+}
+
+loki.source.file "host_services" {
+  targets    = local.file_match.host_services.targets
+  forward_to = [loki.process.ecs.receiver]
+  file_watch {
+    // bind mounts from Windows/macOS don't deliver file events; poll instead
+    min_poll_frequency = "250ms"
+    max_poll_frequency = "1s"
+  }
+}
+
+// ---------------------------------------------------------------- docker mode: container stdout
+discovery.docker "containers" {
+  host = "unix:///var/run/docker.sock"
+}
+
+discovery.relabel "app_containers" {
+  targets = discovery.docker.containers.targets
+
+  // only our Java services; infra containers don't log ECS JSON
+  rule {
+    source_labels = ["__meta_docker_container_label_com_docker_compose_service"]
+    regex         = "api-gateway|.*-service"
+    action        = "keep"
+  }
+  rule {
+    target_label = "source"
+    replacement  = "docker"
+  }
+}
+
+loki.source.docker "app_containers" {
+  host       = "unix:///var/run/docker.sock"
+  targets    = discovery.relabel.app_containers.output
+  forward_to = [loki.process.ecs.receiver]
+}
+
+// ---------------------------------------------------------------- parse Spring Boot ECS JSON
+loki.process "ecs" {
+  stage.json {
+    expressions = {
+      ts             = "\"@timestamp\"",
+      service        = "\"service.name\"",
+      level          = "\"log.level\"",
+      logger         = "\"log.logger\"",
+      thread         = "\"process.thread.name\"",
+      correlation_id = "correlationId",
+      trace_id       = "traceId",
+      span_id        = "spanId",
+    }
+  }
+
+  // Index labels: few values each (7 services x 5 levels). Loki indexes labels, so they must be
+  // low-cardinality, exactly like Prometheus labels.
+  stage.labels {
+    values = { service = "", level = "" }
+  }
+
+  // Per-line metadata: high-cardinality values you filter on but never index.
+  stage.structured_metadata {
+    values = { correlation_id = "", trace_id = "", span_id = "", logger = "", thread = "" }
+  }
+
+  // Use the time the log line was written, not the time Alloy read it.
+  stage.timestamp {
+    source = "ts"
+    format = "RFC3339Nano"
+  }
+
+  forward_to = [loki.write.local.receiver]
+}
+
+loki.write "local" {
+  endpoint {
+    url = "http://loki:3100/loki/api/v1/push"
+  }
+}

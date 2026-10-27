@@ -1,0 +1,8 @@
+# Store text with LF in the repo so shell scripts and YAML work on the Linux CI runners,
+# whatever the editor or core.autocrlf setting on a contributor's machine.
+* text=auto eol=lf
+*.ps1 text eol=crlf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary

@@ -1,0 +1,13 @@
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    uid: prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    jsonData:
+      # Latency histograms carry exemplars (a sample trace id per bucket): click a dot on a chart to open that trace.
+      exemplarTraceIdDestinations:
+        - name: trace_id
+          datasourceUid: tempo

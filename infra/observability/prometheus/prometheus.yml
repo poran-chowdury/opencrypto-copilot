@@ -1,0 +1,30 @@
+# Everything in Docker Compose (service names resolve on the compose network).
+global:
+  scrape_interval: 10s
+  evaluation_interval: 10s
+rule_files: ["alerts.yml"]
+scrape_configs:
+  - job_name: api-gateway
+    metrics_path: /actuator/prometheus
+    static_configs: [{targets: ["api-gateway:8080"]}]
+  - job_name: identity-service
+    metrics_path: /actuator/prometheus
+    static_configs: [{targets: ["identity-service:8081"]}]
+  - job_name: asset-service
+    metrics_path: /actuator/prometheus
+    static_configs: [{targets: ["asset-service:8082"]}]
+  - job_name: wallet-service
+    metrics_path: /actuator/prometheus
+    static_configs: [{targets: ["wallet-service:8083"]}]
+  - job_name: transaction-service
+    metrics_path: /actuator/prometheus
+    static_configs: [{targets: ["transaction-service:8084"]}]
+  - job_name: swap-service
+    metrics_path: /actuator/prometheus
+    static_configs: [{targets: ["swap-service:8085"]}]
+  - job_name: ai-copilot-service
+    metrics_path: /actuator/prometheus
+    static_configs: [{targets: ["ai-copilot-service:8086"]}]
+  - job_name: rabbitmq
+    metrics_path: /metrics/per-object   # per-queue depth, including dead-letter queues
+    static_configs: [{targets: ["rabbitmq:15692"]}]

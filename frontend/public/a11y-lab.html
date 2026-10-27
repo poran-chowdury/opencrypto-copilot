@@ -1,0 +1,43 @@
+<!doctype html>
+<!-- Accessibility lab: a page with DELIBERATELY seeded issues for measuring an auditor.
+     The answer key is frontend/a11y/seeded-issues.json. Do not fix these. -->
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 24px; background: #fff; color: #111; max-width: 720px; }
+    .faint { color: #c8c8c8; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 16px; margin: 16px 0; }
+    .icon-btn { width: 32px; height: 32px; border: 1px solid #999; background: #f4f4f4; }
+    .fake-button { display: inline-block; padding: 6px 12px; background: #2a78d6; color: #fff; cursor: pointer; }
+    .order { display: flex; flex-direction: column-reverse; }
+  </style>
+</head>
+<body>
+  <h1>Portfolio summary</h1>
+
+  <div class="card">
+    <h4>Holdings</h4>
+    <img src="/favicon.svg" width="32" height="32" id="seed-img">
+    <p class="faint" id="seed-contrast">Your total balance is $12,345.67 as of 14:02 UTC.</p>
+    <li id="seed-orphan-li">BTC 0.05</li>
+  </div>
+
+  <div class="card">
+    <h2>Quick swap</h2>
+    <input type="number" id="seed-input" placeholder="Amount">
+    <input type="text" id="seed-input-nolabel">
+    <button class="icon-btn" id="seed-icon-button"><svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h12M10 4l4 4-4 4" stroke="#111" fill="none"/></svg></button>
+    <a href="/trade" id="seed-empty-link"><svg width="16" height="16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="#2a78d6"/></svg></a>
+    <span class="fake-button" id="seed-div-button" onclick="alert('swapped')">Confirm swap</span>
+  </div>
+
+  <div class="card">
+    <h2>Learn more</h2>
+    <p>Fees changed this year. <a href="/knowledge" id="seed-vague-link">Click here</a>.</p>
+    <p id="seed-color-only">Assets shown in <span style="color:#d03b3b">red</span> are down today.</p>
+    <div class="order" id="seed-visual-order"><button>Step 2: Confirm</button><button>Step 1: Review</button></div>
+  </div>
+</body>
+</html>

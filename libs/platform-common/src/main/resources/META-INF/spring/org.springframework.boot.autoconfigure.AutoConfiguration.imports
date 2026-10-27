@@ -1,0 +1,4 @@
+dev.opencrypto.platform.web.WebPlatformAutoConfiguration
+dev.opencrypto.platform.messaging.MessagingAutoConfiguration
+dev.opencrypto.platform.tracing.TracingAutoConfiguration
+dev.opencrypto.platform.tracing.DatabaseTracingAutoConfiguration

@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: opencrypto
+    folder: OpenCrypto
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards
