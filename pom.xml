@@ -12,11 +12,11 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <spring-boot.version>3.4.10</spring-boot.version>
     <spring-cloud.version>2024.0.2</spring-cloud.version>
-    <resilience4j.version>2.2.0</resilience4j.version>
+    <resilience4j.version>2.4.0</resilience4j.version>
     <shedlock.version>5.16.0</shedlock.version>
-    <wiremock.version>3.9.2</wiremock.version>
+    <wiremock.version>3.13.2</wiremock.version>
     <!-- OpenTelemetry instrumentation release built against the OpenTelemetry API that Spring Boot manages (1.43.x) -->
-    <opentelemetry-instrumentation.version>2.9.0-alpha</opentelemetry-instrumentation.version>
+    <opentelemetry-instrumentation.version>2.33.0-alpha</opentelemetry-instrumentation.version>
   </properties>
 
   <modules>
@@ -98,13 +98,13 @@
                that service (docs/engineering/10-bugs-and-lessons.md #23). -->
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-jar-plugin</artifactId>
-          <version>3.3.0</version>
+          <version>3.5.1</version>
           <configuration><forceCreation>true</forceCreation></configuration>
         </plugin>
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-compiler-plugin</artifactId>
-          <version>3.13.0</version>
+          <version>3.16.0</version>
           <configuration>
             <release>21</release>
             <!-- keeps parameter names for @RequestParam/@PathVariable without explicit names -->
@@ -114,7 +114,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-surefire-plugin</artifactId>
-          <version>3.5.2</version>
+          <version>3.6.1</version>
           <configuration>
             <!-- fast unit tests only; *IT classes need Docker and run in failsafe -->
             <excludes><exclude>**/*IT.java</exclude></excludes>
@@ -123,7 +123,7 @@
         <plugin>
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-failsafe-plugin</artifactId>
-          <version>3.5.2</version>
+          <version>3.6.1</version>
           <configuration>
             <!-- test against compiled classes, not the repackaged Spring Boot jar (BOOT-INF layout) -->
             <classesDirectory>${project.build.outputDirectory}</classesDirectory>
