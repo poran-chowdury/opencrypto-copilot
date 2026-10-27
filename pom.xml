@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>dev.opencrypto</groupId>
+  <artifactId>opencrypto-copilot</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <packaging>pom</packaging>
+
+  <properties>
+    <java.version>21</java.version>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    <spring-boot.version>3.4.10</spring-boot.version>
+    <spring-cloud.version>2024.0.2</spring-cloud.version>
+    <resilience4j.version>2.2.0</resilience4j.version>
+    <shedlock.version>5.16.0</shedlock.version>
+    <wiremock.version>3.9.2</wiremock.version>
+    <!-- OpenTelemetry instrumentation release built against the OpenTelemetry API that Spring Boot manages (1.43.x) -->
+    <opentelemetry-instrumentation.version>2.9.0-alpha</opentelemetry-instrumentation.version>
+  </properties>
+
+  <modules>
+    <module>libs/platform-common</module>
+    <module>services/api-gateway</module>
+    <module>services/identity-service</module>
+    <module>services/asset-service</module>
+    <module>services/wallet-service</module>
+    <module>services/transaction-service</module>
+    <module>services/swap-service</module>
+    <module>services/ai-copilot-service</module>
+  </modules>
+
+  <dependencyManagement>
+    <dependencies>
+      <dependency>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-dependencies</artifactId>
+        <version>${spring-boot.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>org.springframework.cloud</groupId>
+        <artifactId>spring-cloud-dependencies</artifactId>
+        <version>${spring-cloud.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>io.github.resilience4j</groupId>
+        <artifactId>resilience4j-bom</artifactId>
+        <version>${resilience4j.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>dev.opencrypto</groupId>
+        <artifactId>platform-common</artifactId>
+        <version>${project.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.javacrumbs.shedlock</groupId>
+        <artifactId>shedlock-spring</artifactId>
+        <version>${shedlock.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>net.javacrumbs.shedlock</groupId>
+        <artifactId>shedlock-provider-jdbc-template</artifactId>
+        <version>${shedlock.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.wiremock</groupId>
+        <artifactId>wiremock-standalone</artifactId>
+        <version>${wiremock.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>io.opentelemetry.instrumentation</groupId>
+        <artifactId>opentelemetry-jdbc</artifactId>
+        <version>${opentelemetry-instrumentation.version}</version>
+      </dependency>
+    </dependencies>
+  </dependencyManagement>
+
+  <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.springframework.boot</groupId>
+          <artifactId>spring-boot-maven-plugin</artifactId>
+          <version>${spring-boot.version}</version>
+          <executions>
+            <execution><goals><goal>repackage</goal></goals></execution>
+          </executions>
+        </plugin>
+        <plugin>
+          <!-- Always rebuild the jar. Otherwise a service whose own classes didn't change keeps its old jar,
+               repackage sees it's already repackaged and skips, and a platform-common change never reaches
+               that service (docs/engineering/10-bugs-and-lessons.md #23). -->
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-jar-plugin</artifactId>
+          <version>3.3.0</version>
+          <configuration><forceCreation>true</forceCreation></configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <version>3.13.0</version>
+          <configuration>
+            <release>21</release>
+            <!-- keeps parameter names for @RequestParam/@PathVariable without explicit names -->
+            <parameters>true</parameters>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-surefire-plugin</artifactId>
+          <version>3.5.2</version>
+          <configuration>
+            <!-- fast unit tests only; *IT classes need Docker and run in failsafe -->
+            <excludes><exclude>**/*IT.java</exclude></excludes>
+          </configuration>
+        </plugin>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-failsafe-plugin</artifactId>
+          <version>3.5.2</version>
+          <configuration>
+            <!-- test against compiled classes, not the repackaged Spring Boot jar (BOOT-INF layout) -->
+            <classesDirectory>${project.build.outputDirectory}</classesDirectory>
+          </configuration>
+          <executions>
+            <execution><goals><goal>integration-test</goal><goal>verify</goal></goals></execution>
+          </executions>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-failsafe-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+</project>

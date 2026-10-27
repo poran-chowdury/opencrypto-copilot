@@ -1,0 +1,35 @@
+# Run the images that CI/CD published to ghcr.io instead of building them locally:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.release.yml pull
+#   docker compose -f docker-compose.yml -f docker-compose.release.yml up -d
+#
+# OPENCRYPTO_IMAGE_OWNER is the GitHub user or org (lowercase); OPENCRYPTO_TAG is latest (main),
+# a release such as 1.2.0, or sha-<short sha> for one exact commit.
+x-release: &release
+  pull_policy: always
+
+services:
+  api-gateway:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-api-gateway:${OPENCRYPTO_TAG:-latest}
+  identity-service:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-identity-service:${OPENCRYPTO_TAG:-latest}
+  asset-service:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-asset-service:${OPENCRYPTO_TAG:-latest}
+  wallet-service:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-wallet-service:${OPENCRYPTO_TAG:-latest}
+  transaction-service:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-transaction-service:${OPENCRYPTO_TAG:-latest}
+  swap-service:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-swap-service:${OPENCRYPTO_TAG:-latest}
+  ai-copilot-service:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-ai-copilot-service:${OPENCRYPTO_TAG:-latest}
+  frontend:
+    <<: *release
+    image: ghcr.io/${OPENCRYPTO_IMAGE_OWNER:-poran-chowdury}/opencrypto-frontend:${OPENCRYPTO_TAG:-latest}

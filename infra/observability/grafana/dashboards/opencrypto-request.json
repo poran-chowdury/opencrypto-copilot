@@ -1,0 +1,531 @@
+{
+  "uid": "opencrypto-request",
+  "title": "Request trace",
+  "tags": [
+    "opencrypto",
+    "logs"
+  ],
+  "description": "Pick a request from the list, or paste a correlation id (from an error toast, X-Correlation-Id header, swap stateHistory or the OpenCrypto logs tables), to see it end to end.",
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "",
+  "time": {
+    "from": "now-6h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Recent requests",
+      "description": "One row per request through the gateway (health checks excluded), newest first. Click a trace id and choose \"Show this request below\". Expand a row for the HTTP status. Trace duration includes asynchronous work (saga steps) after the response.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 10,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "queryType": "traceql",
+          "query": "{ resource.service.name = \"api-gateway\" && kind = server && name =~ \"(?i).*$path.*\" ${outcome:raw} } | select(span.status)",
+          "tableType": "traces",
+          "limit": 100,
+          "spss": 1
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceID"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Trace id"
+              },
+              {
+                "id": "links",
+                "value": [
+                  {
+                    "title": "Show this request below",
+                    "targetBlank": false,
+                    "url": "/d/opencrypto-request?var-correlation_id=${__value.raw}&${outcome:queryparam}&${path:queryparam}&${__url_time_range}"
+                  }
+                ]
+              },
+              {
+                "id": "custom.width",
+                "value": 300
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "startTime"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Time"
+              },
+              {
+                "id": "custom.width",
+                "value": 190
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceName"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Request"
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceDuration"
+            },
+            "properties": [
+              {
+                "id": "displayName",
+                "value": "Trace duration"
+              },
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 140
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "traceService"
+            },
+            "properties": [
+              {
+                "id": "custom.hidden",
+                "value": true
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "showHeader": true,
+        "cellHeight": "sm",
+        "sortBy": [
+          {
+            "displayName": "Time",
+            "desc": true
+          }
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "HTTP status",
+      "description": "What the caller got back from the gateway. 202 means accepted: the rest happened asynchronously below.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 0,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "\u2013",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 400,
+                "color": "orange"
+              },
+              {
+                "value": 500,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max(max_over_time({service=\"api-gateway\"} | logger=\"http.access\" | correlation_id=\"$correlation_id\" | json method=\"[\\\"http.request.method\\\"]\", path=\"[\\\"url.path\\\"]\", status=\"[\\\"http.response.status_code\\\"]\", duration=\"duration_ms\" | status != \"\" | unwrap status | __error__=\"\" [$__range]))",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Response time",
+      "description": "Time until the HTTP response. Asynchronous work (saga steps) can continue after this.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 6,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "decimals": 0,
+          "noValue": "\u2013",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1000,
+                "color": "orange"
+              },
+              {
+                "value": 3000,
+                "color": "red"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "max(max_over_time({service=\"api-gateway\"} | logger=\"http.access\" | correlation_id=\"$correlation_id\" | json method=\"[\\\"http.request.method\\\"]\", path=\"[\\\"url.path\\\"]\", status=\"[\\\"http.response.status_code\\\"]\", duration=\"duration_ms\" | status != \"\" | unwrap duration | __error__=\"\" [$__range]))",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Services involved",
+      "description": "Distinct services that logged anything for this request, including through RabbitMQ.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 12,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "\u2013",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "blue"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "count(sum by (service) (count_over_time({service=~\".+\"} | correlation_id=\"$correlation_id\" [$__range])))",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Warnings and errors",
+      "description": "WARN/ERROR lines for this request. Highlighted in orange/red in the timeline.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 6,
+        "x": 18,
+        "y": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "decimals": 0,
+          "noValue": "\u2013",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "value": null,
+                "color": "green"
+              },
+              {
+                "value": 1,
+                "color": "orange"
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "textMode": "value",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ]
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "sum(count_over_time({service=~\".+\", level=~\"ERROR|WARN\"} | correlation_id=\"$correlation_id\" [$__range])) or vector(0)",
+          "queryType": "instant"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "traces",
+      "title": "Distributed trace (where the time went)",
+      "description": "OpenTelemetry spans from Tempo: one bar per operation (HTTP calls, RabbitMQ publish/receive), nested by caller. Gaps between bars are queue time. Click a span for its attributes and logs.",
+      "datasource": {
+        "type": "tempo",
+        "uid": "tempo"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 14
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "tempo",
+            "uid": "tempo"
+          },
+          "queryType": "traceql",
+          "query": "$correlation_id"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "logs",
+      "title": "Log lines of request $correlation_id",
+      "description": "Every line this request produced, in every service, oldest first. Read top to bottom: HTTP in, messages queued and received, state changes, the outcome.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "h": 16,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "options": {
+        "showTime": true,
+        "sortOrder": "Ascending",
+        "wrapLogMessage": true,
+        "enableLogDetails": true,
+        "showLabels": false,
+        "showCommonLabels": false,
+        "dedupStrategy": "none",
+        "prettifyLogMessage": false
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "expr": "{service=~\".+\"} | correlation_id=\"$correlation_id\" | json message=\"message\", stack=\"[\\\"error.stack_trace\\\"]\" | line_format \"{{ .service | trimSuffix \\\"-service\\\" | printf \\\"%-13s\\\" }} {{ .message }}{{ if .stack }}\\n{{ .stack }}{{ end }}\"",
+          "queryType": "range",
+          "maxLines": 1000
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": [
+      {
+        "name": "outcome",
+        "label": "Requests",
+        "type": "custom",
+        "query": "All : && duration >= 0ms,Failed (4xx/5xx) : && span.status =~ \"[45]..\",Server errors (5xx) : && span.status =~ \"5..\",Slow response (> 1 s) : && duration > 1s",
+        "options": [
+          {
+            "text": "All",
+            "value": "&& duration >= 0ms",
+            "selected": true
+          },
+          {
+            "text": "Failed (4xx/5xx)",
+            "value": "&& span.status =~ \"[45]..\"",
+            "selected": false
+          },
+          {
+            "text": "Server errors (5xx)",
+            "value": "&& span.status =~ \"5..\"",
+            "selected": false
+          },
+          {
+            "text": "Slow response (> 1 s)",
+            "value": "&& duration > 1s",
+            "selected": false
+          }
+        ],
+        "current": {
+          "text": "All",
+          "value": "&& duration >= 0ms"
+        }
+      },
+      {
+        "name": "path",
+        "label": "Path contains",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      },
+      {
+        "name": "correlation_id",
+        "label": "Correlation id",
+        "type": "textbox",
+        "query": "",
+        "current": {
+          "text": "",
+          "value": ""
+        }
+      }
+    ]
+  },
+  "links": [
+    {
+      "title": "Metrics",
+      "type": "link",
+      "url": "/d/opencrypto-overview",
+      "icon": "dashboard"
+    },
+    {
+      "title": "Logs",
+      "type": "link",
+      "url": "/d/opencrypto-logs",
+      "icon": "doc"
+    },
+    {
+      "title": "Request trace",
+      "type": "link",
+      "url": "/d/opencrypto-request",
+      "icon": "bolt"
+    }
+  ]
+}

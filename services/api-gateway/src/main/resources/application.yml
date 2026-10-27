@@ -1,0 +1,80 @@
+server:
+  port: ${SERVER_PORT:8080}
+  shutdown: graceful
+spring:
+  application:
+    name: api-gateway
+  reactor:
+    context-propagation: auto   # trace/span ids follow reactive code across threads (log MDC)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      timeout: 500ms
+  cloud:
+    gateway:
+      httpclient:
+        connect-timeout: 2000      # ms
+        response-timeout: 15s      # a stuck service can't hold gateway connections forever
+      globalcors:
+        cors-configurations:
+          '[/api/**]':
+            allowed-origins: ${GATEWAY_CORS_ORIGINS:http://localhost:5173}
+            allowed-methods: [GET, POST, PUT, DELETE, OPTIONS]
+            allowed-headers: [Content-Type, Idempotency-Key, X-Demo-User, X-Demo-Role, X-Correlation-Id]
+            exposed-headers: [X-Correlation-Id, X-RateLimit-Remaining, X-RateLimit-Burst-Capacity, X-RateLimit-Replenish-Rate, Retry-After, Idempotent-Replayed, Location]
+
+services:
+  identity-url: ${IDENTITY_SERVICE_URL:http://localhost:8081}
+  asset-url: ${ASSET_SERVICE_URL:http://localhost:8082}
+  wallet-url: ${WALLET_SERVICE_URL:http://localhost:8083}
+  transaction-url: ${TRANSACTION_SERVICE_URL:http://localhost:8084}
+  swap-url: ${SWAP_SERVICE_URL:http://localhost:8085}
+  ai-url: ${AI_COPILOT_SERVICE_URL:http://localhost:8086}
+
+ratelimit:
+  read:
+    replenish-per-second: ${RATELIMIT_READ_RATE:30}
+    burst: ${RATELIMIT_READ_BURST:60}
+  write:
+    replenish-per-second: ${RATELIMIT_WRITE_RATE:5}
+    burst: ${RATELIMIT_WRITE_BURST:10}
+  ai:                        # chat + tool calls: will cost LLM tokens in the AI phase
+    replenish-per-second: ${RATELIMIT_AI_RATE:3}
+    burst: ${RATELIMIT_AI_BURST:20}
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{correlationId:-}]"
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0   # every request locally; sample in production (MANAGEMENT_TRACING_SAMPLING_PROBABILITY)
+  otlp:
+    tracing:
+      endpoint: http://localhost:4318/v1/traces   # MANAGEMENT_OTLP_TRACING_ENDPOINT in Docker
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics,gateway
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        spring.cloud.gateway.requests: true
+        http.server.requests: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: json-logs
+logging:
+  structured:
+    format:
+      console: ecs

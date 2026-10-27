@@ -1,0 +1,105 @@
+server:
+  port: ${SERVER_PORT:8082}
+  shutdown: graceful
+spring:
+  application:
+    name: asset-service
+  threads:
+    virtual:
+      enabled: true
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5433}/${DB_NAME:opencrypto}?currentSchema=asset
+    username: ${ASSET_DB_USER:asset_svc}
+    password: ${ASSET_DB_PASSWORD:asset_localdev}
+    hikari:
+      maximum-pool-size: 10
+      connection-timeout: 5000
+  flyway:
+    schemas: asset
+    default-schema: asset
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6380}
+      timeout: 1s
+  mvc:
+    problemdetails:
+      enabled: true
+
+market:
+  provider: ${MARKET_PROVIDER:coingecko}          # coingecko | simulated
+  coingecko:
+    base-url: ${COINGECKO_BASE_URL:https://api.coingecko.com/api/v3}
+    api-key: ${COINGECKO_API_KEY:}                # optional free "demo" key raises the rate limit
+    sync-interval: ${COINGECKO_SYNC_INTERVAL:PT60S}
+    stale-after-seconds: 300
+    connect-timeout: PT3S
+    read-timeout: PT10S
+  simulated:
+    seed: ${MARKET_SEED:}
+    tick-interval-ms: ${MARKET_TICK_INTERVAL_MS:2000}
+    simulated-minutes-per-tick: 10
+    event-probability-per-tick: ${MARKET_EVENT_PROBABILITY:0.003}
+    backfill-ticks: 1800
+    stale-after-seconds: 30
+  retention:
+    real: P30D
+    simulated: P2D
+
+resilience4j:
+  retry:
+    instances:
+      coingecko:
+        max-attempts: 3
+        wait-duration: 2s
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+          - org.springframework.web.client.HttpClientErrorException$TooManyRequests
+  circuitbreaker:
+    instances:
+      coingecko:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 6
+        minimum-number-of-calls: 3
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 120s
+        permitted-number-of-calls-in-half-open-state: 1
+        register-health-indicator: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+  metrics:
+    tags:
+      application: ${spring.application.name}
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{correlationId:-}]"
+
+---
+# JSON logs (Elastic Common Schema) for containers: SPRING_PROFILES_ACTIVE=json-logs
+spring:
+  config:
+    activate:
+      on-profile: json-logs
+logging:
+  structured:
+    format:
+      console: ecs

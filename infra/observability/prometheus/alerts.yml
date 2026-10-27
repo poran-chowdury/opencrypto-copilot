@@ -1,0 +1,66 @@
+# Alert rules (visible at http://localhost:9090/alerts). Each one guards a failure that would
+# otherwise be silent. Wire an Alertmanager to route them to Slack/e-mail/PagerDuty in production.
+groups:
+  - name: money
+    rules:
+      - alert: LedgerReconciliationMismatch
+        expr: max(ledger_reconciliation_mismatches) > 0
+        for: 1m
+        labels: {severity: critical}
+        annotations:
+          summary: "Ledger invariants violated ({{ $value }} problems)"
+          description: "GET /api/v1/wallet/reconciliation shows which check failed. Stop swaps and investigate before anything else."
+      - alert: SwapStateInconsistency
+        expr: sum(increase(swap_inconsistencies_total[15m])) > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "A swap settled in the wallet but is FAILED in swap-service"
+
+  - name: messaging
+    rules:
+      - alert: OutboxBacklog
+        expr: max by (application) (outbox_pending) > 100
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.application }} cannot publish events ({{ $value }} pending)"
+          description: "RabbitMQ unreachable or publisher confirms failing. Events are safe in the outbox table and will be sent when it recovers."
+      - alert: MessagesDeadLettered
+        expr: max by (queue) (rabbitmq_queue_messages{queue=~".*\\.dlq"}) > 0
+        for: 1m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $value }} message(s) in {{ $labels.queue }}"
+          description: "A message failed all retries. Inspect it in the RabbitMQ UI (http://localhost:15673), fix the cause, then shovel it back."
+
+  - name: dependencies
+    rules:
+      - alert: CircuitBreakerOpen
+        expr: max by (application, name) (resilience4j_circuitbreaker_state{state="open"}) == 1
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "Circuit breaker {{ $labels.name }} open in {{ $labels.application }}"
+      - alert: MarketDataStale
+        expr: max(market_price_age_seconds) > 600
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "No market data ingested for {{ $value }}s; quotes are refused while prices are stale"
+
+  - name: http
+    rules:
+      - alert: HighServerErrorRate
+        expr: |
+          sum by (application) (rate(http_server_requests_seconds_count{status=~"5..", uri!~"/actuator.*"}[5m]))
+            / sum by (application) (rate(http_server_requests_seconds_count{uri!~"/actuator.*"}[5m])) > 0.05
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.application }}: more than 5% of requests fail with 5xx"
+      - alert: RateLimitingSpike
+        expr: sum(rate(gateway_ratelimit_rejected_total[5m])) > 5
+        for: 5m
+        labels: {severity: info}
+        annotations:
+          summary: "Gateway is rejecting more than 5 requests/s (abuse or a misbehaving client?)"

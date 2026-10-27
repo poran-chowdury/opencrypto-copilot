@@ -1,0 +1,16 @@
+target/
+.idea/
+.vscode/
+.env
+*.iml
+*.log
+node_modules/
+dist/
+.run/
+*.tsbuildinfo
+evaluation/results*.jsonl
+evaluation/runs/
+analytics/*_results.json
+frontend/test-results/
+frontend/playwright-report/
+frontend/a11y-report/

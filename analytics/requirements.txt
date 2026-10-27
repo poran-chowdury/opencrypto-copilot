@@ -1,0 +1,5 @@
+# Not needed for volatility_baseline.py (standard library only).
+# Suggested for building your own forecasting model:
+pandas>=2.2
+numpy>=1.26
+scikit-learn>=1.5

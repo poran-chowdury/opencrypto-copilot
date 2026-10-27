@@ -1,0 +1,180 @@
+name: opencrypto-copilot
+
+# Shared settings for the Java services (YAML anchors keep each service definition short).
+x-java-service: &java-service
+  restart: unless-stopped
+  depends_on:
+    postgres: {condition: service_healthy}
+    redis: {condition: service_healthy}
+    rabbitmq: {condition: service_healthy}
+
+x-service-env: &service-env
+  SPRING_PROFILES_ACTIVE: json-logs
+  MANAGEMENT_OTLP_TRACING_ENDPOINT: http://tempo:4318/v1/traces
+  DB_HOST: postgres
+  DB_PORT: "5432"
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  RABBITMQ_HOST: rabbitmq
+  RABBITMQ_PORT: "5672"
+  RABBITMQ_USER: "${RABBITMQ_USER:-opencrypto}"
+  RABBITMQ_PASSWORD: "${RABBITMQ_PASSWORD:-localdev_only_change_me}"
+  ASSET_SERVICE_URL: http://asset-service:8082
+  WALLET_SERVICE_URL: http://wallet-service:8083
+  TRANSACTION_SERVICE_URL: http://transaction-service:8084
+  SWAP_SERVICE_URL: http://swap-service:8085
+  AI_COPILOT_SERVICE_URL: http://ai-copilot-service:8086
+  IDENTITY_SERVICE_URL: http://identity-service:8081
+
+services:
+  # ---------------------------------------------------------------- infrastructure
+  # Host ports avoid the defaults (5432/6379/5672) so a locally installed Postgres/Redis/RabbitMQ can't clash.
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: opencrypto
+      POSTGRES_USER: opencrypto
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-localdev_only_change_me}"
+      ASSET_DB_PASSWORD: "${ASSET_DB_PASSWORD:-asset_localdev}"
+      WALLET_DB_PASSWORD: "${WALLET_DB_PASSWORD:-wallet_localdev}"
+      SWAP_DB_PASSWORD: "${SWAP_DB_PASSWORD:-swap_localdev}"
+      TXN_DB_PASSWORD: "${TXN_DB_PASSWORD:-txn_localdev}"
+    ports: ["${POSTGRES_HOST_PORT:-5433}:5432"]
+    volumes: ["postgres-data:/var/lib/postgresql/data", "./infra/postgres/init:/docker-entrypoint-initdb.d:ro"]
+    healthcheck: {test: ["CMD-SHELL", "pg_isready -U opencrypto -d opencrypto"], interval: 5s, timeout: 5s, retries: 20}
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["${REDIS_HOST_PORT:-6380}:6379"]
+    volumes: ["redis-data:/data"]
+    healthcheck: {test: ["CMD", "redis-cli", "ping"], interval: 5s, timeout: 3s, retries: 20}
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: "${RABBITMQ_USER:-opencrypto}"
+      RABBITMQ_DEFAULT_PASS: "${RABBITMQ_PASSWORD:-localdev_only_change_me}"
+    ports: ["${RABBITMQ_HOST_PORT:-5673}:5672", "${RABBITMQ_UI_HOST_PORT:-15673}:15672"]
+    volumes: ["rabbitmq-data:/var/lib/rabbitmq"]
+    healthcheck: {test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"], interval: 10s, timeout: 5s, retries: 20}
+
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    # remote-write receiver: Tempo pushes service-graph/span metrics; exemplars: metrics link to traces.
+    # Not PROMETHEUS_CONFIG: the Prometheus Java client in every service reads that as its own config file.
+    command: ["--config.file=/etc/prometheus/${PROMETHEUS_SERVER_CONFIG:-prometheus.yml}", "--web.enable-lifecycle",
+              "--web.enable-remote-write-receiver", "--enable-feature=exemplar-storage"]
+    ports: ["9090:9090"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes: ["./infra/observability/prometheus:/etc/prometheus:ro"]
+
+  loki:                                      # log storage + LogQL queries
+    image: grafana/loki:3.5.3
+    command: ["-config.file=/etc/loki/loki.yml"]
+    ports: ["3100:3100"]
+    volumes:
+      - ./infra/observability/loki/loki.yml:/etc/loki/loki.yml:ro
+      - loki-data:/loki
+
+  alloy:                                     # log shipper: files (host mode) + container stdout (docker mode)
+    image: grafana/alloy:v1.10.0
+    command: ["run", "--server.http.listen-addr=0.0.0.0:12345", "--storage.path=/var/lib/alloy/data", "/etc/alloy/config.alloy"]
+    ports: ["12345:12345"]
+    volumes:
+      - ./infra/observability/alloy/config.alloy:/etc/alloy/config.alloy:ro
+      - ./.run/logs/json:/var/log/opencrypto:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - alloy-data:/var/lib/alloy/data
+    depends_on: [loki]
+
+  tempo:                                     # distributed traces (OTLP in, Grafana out)
+    image: grafana/tempo:2.8.2
+    command: ["-config.file=/etc/tempo/tempo.yml"]
+    user: "0"                                # local dev only: lets Tempo write to the named volume
+    ports: ["3200:3200", "4317:4317", "4318:4318"]
+    volumes:
+      - ./infra/observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
+      - tempo-data:/var/tempo
+
+  grafana:
+    image: grafana/grafana:12.1.1
+    environment:
+      GF_SECURITY_ADMIN_USER: "${GRAFANA_USER:-admin}"
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_PASSWORD:-localdev_only_change_me}"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    ports: ["3000:3000"]
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on: [prometheus, loki, tempo]
+
+  # ---------------------------------------------------------------- application
+  api-gateway:
+    build: {context: ., dockerfile: services/Dockerfile, args: {SERVICE: api-gateway}}
+    restart: unless-stopped
+    ports: ["8080:8080"]
+    environment:
+      <<: *service-env
+      GATEWAY_CORS_ORIGINS: "http://localhost:5173"
+    depends_on:
+      redis: {condition: service_healthy}
+
+  identity-service:
+    <<: *java-service
+    build: {context: ., dockerfile: services/Dockerfile, args: {SERVICE: identity-service}}
+    environment: *service-env
+
+  asset-service:
+    <<: *java-service
+    build: {context: ., dockerfile: services/Dockerfile, args: {SERVICE: asset-service}}
+    environment:
+      <<: *service-env
+      ASSET_DB_PASSWORD: "${ASSET_DB_PASSWORD:-asset_localdev}"
+      MARKET_PROVIDER: "${MARKET_PROVIDER:-coingecko}"
+      COINGECKO_API_KEY: "${COINGECKO_API_KEY:-}"
+      MARKET_SEED: "${MARKET_SEED:-}"
+
+  wallet-service:
+    <<: *java-service
+    build: {context: ., dockerfile: services/Dockerfile, args: {SERVICE: wallet-service}}
+    environment:
+      <<: *service-env
+      WALLET_DB_PASSWORD: "${WALLET_DB_PASSWORD:-wallet_localdev}"
+
+  transaction-service:
+    <<: *java-service
+    build: {context: ., dockerfile: services/Dockerfile, args: {SERVICE: transaction-service}}
+    environment:
+      <<: *service-env
+      TXN_DB_PASSWORD: "${TXN_DB_PASSWORD:-txn_localdev}"
+
+  swap-service:
+    <<: *java-service
+    build: {context: ., dockerfile: services/Dockerfile, args: {SERVICE: swap-service}}
+    environment:
+      <<: *service-env
+      SWAP_DB_PASSWORD: "${SWAP_DB_PASSWORD:-swap_localdev}"
+
+  ai-copilot-service:
+    <<: *java-service
+    build: {context: ., dockerfile: services/Dockerfile, args: {SERVICE: ai-copilot-service}}
+    environment:
+      <<: *service-env
+      COPILOT_ENGINE: "${COPILOT_ENGINE:-deterministic}"
+      KNOWLEDGE_PATH: /app/knowledge
+      LLM_PROVIDER: "${LLM_PROVIDER:-}"
+      LLM_MODEL: "${LLM_MODEL:-}"
+      LLM_API_KEY: "${LLM_API_KEY:-}"
+      LLM_BASE_URL: "${LLM_BASE_URL:-}"
+    volumes: ["./knowledge:/app/knowledge:ro"]
+
+  frontend:
+    build: {context: ./frontend}
+    restart: unless-stopped
+    ports: ["5173:80"]
+    depends_on: [api-gateway]
+
+volumes: {postgres-data: {}, redis-data: {}, rabbitmq-data: {}, grafana-data: {}, loki-data: {}, alloy-data: {}, tempo-data: {}}
