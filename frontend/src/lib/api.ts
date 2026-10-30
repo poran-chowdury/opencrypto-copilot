@@ -63,8 +63,15 @@ export interface Activity { id: string; type: 'SWAP' | 'DEPOSIT' | 'RESET'; refe
 export interface ToolCall { name: string; input: Record<string, unknown>; output: unknown; error: string | null; durationMs: number }
 export interface ProposedAction { type: string; description: string; payload: Record<string, unknown>; requiresUserConfirmation: boolean }
 export interface ChatMessage { role: 'user' | 'assistant'; content: string }
-export interface ChatResponse { answer: string; mode: string; engine: string; llmConnected: boolean; toolsExecuted: ToolCall[]; proposedAction: ProposedAction | null; caveats: string[]; usage: Record<string, unknown> }
-export interface AiStatus { engine: string; llmConnected: boolean; engines: { name: string; llmConnected: boolean }[]; llm: { provider: string; model: string; configured: boolean }; retrievers: string[]; defaultRetriever: string; tools: string[] }
+/** Free-form on the server; these are the fields engines are expected to report (see ModelPricing). */
+export interface ChatUsage { model?: string; inputTokens?: number; outputTokens?: number; estimatedCostUsd?: number; [key: string]: unknown }
+export interface ChatResponse { answer: string; mode: string; engine: string; llmConnected: boolean; toolsExecuted: ToolCall[]; proposedAction: ProposedAction | null; caveats: string[]; usage: ChatUsage | null }
+/** A model client the platform has configured for engines to use: Claude for reasoning, a local model for sensitive steps. */
+export interface ModelInfo { provider: string; model: string; configured: boolean; baseUrl?: string }
+export interface AiStatus {
+  engine: string; llmConnected: boolean; engines: { name: string; llmConnected: boolean }[]; llm: { provider: string; model: string; configured: boolean };
+  models?: { reasoning: ModelInfo; local: ModelInfo }; retrievers: string[]; defaultRetriever: string; tools: string[];
+}
 export interface KnowledgeDocument { id: string; title: string; version: string; status: string; publishedAt: string | null; validUntil: string | null; accessScope: string; sourceType: string; trust: string; supersedes: string | null; tags: string[]; sourcePath: string }
 export interface KnowledgeHit { chunkId: string; documentId: string; title: string; section: string; version: string; status: string; publishedAt: string | null; validUntil: string | null; sourceType: string; trust: string; sourcePath: string; score: number; text: string }
 

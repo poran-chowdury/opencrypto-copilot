@@ -41,7 +41,7 @@ public class CopilotTools {
   register("get_portfolio",
    "Get the user's simulated portfolio: balances, USD prices, USD values and allocation percentages, with an asOf timestamp. pricesAvailable=false means values are incomplete.",
    schema(Map.of(), List.of()),
-   (c, in) -> platform.portfolio(c.userId()));
+   (c, in) -> compactPortfolio(platform.portfolio(c.userId())));
   register("get_portfolio_timeline",
    "Get the user's simulated portfolio value per market tick plus ledger events (swaps, deposits, resets) in the window. Empty before the wallet was opened (walletOpenedAt).",
    schema(Map.of("from", FROM, "to", TO, "limit", intProp("Max points, most recent kept, 1-5000", 300)), List.of()),
@@ -49,11 +49,11 @@ public class CopilotTools {
   register("get_market_prices",
    "Get current simulated USD prices for all assets with change over the last 100 ticks, updatedAt, ageSeconds and a stale flag. Fails if the price feed is down.",
    schema(Map.of(), List.of()),
-   (c, in) -> platform.assets());
+   (c, in) -> compactAssets(platform.assets()));
   register("get_asset_info",
    "Get one asset's price, freshness, decimals, description and supported withdrawal networks (with simulated network fees and confirmations). Unknown symbols return an error.",
    schema(Map.of("symbol", Map.of("type", "string", "description", "Asset symbol, e.g. BTC")), List.of("symbol")),
-   (c, in) -> platform.asset(stringArg(in, "symbol", true)));
+   (c, in) -> compactAsset(platform.asset(stringArg(in, "symbol", true))));
   register("get_price_history",
    "Get simulated price points for one asset, oldest first, optionally within a time window.",
    schema(Map.of("symbol", symbolProp(), "from", FROM, "to", TO, "limit", intProp("Max points, most recent kept, 1-5000", 300)), List.of("symbol")),
@@ -66,11 +66,11 @@ public class CopilotTools {
    "Get the user's recent simulated activity (swaps, deposits, resets), newest first.",
    schema(Map.of("limit", intProp("Max records, 1-100", 20),
     "type", Map.of("type", "string", "enum", List.of("SWAP", "DEPOSIT", "RESET"), "description", "Optional filter")), List.of()),
-   (c, in) -> platform.transactions(c.userId(), stringArg(in, "type", false), intArg(in, "limit", 20, 1, 100)));
+   (c, in) -> compactTransactions(platform.transactions(c.userId(), stringArg(in, "type", false), intArg(in, "limit", 20, 1, 100))));
   register("get_swaps",
    "Get the user's swap orders with state (CREATED, VALIDATING, EXECUTING, COMPLETED, FAILED), failureReason, amounts and stateHistory timestamps. Use this to explain what happened to a swap.",
    schema(Map.of("limit", intProp("Max orders, 1-50", 10)), List.of()),
-   (c, in) -> platform.swaps(c.userId(), intArg(in, "limit", 10, 1, 50)));
+   (c, in) -> compactSwaps(platform.swaps(c.userId(), intArg(in, "limit", 10, 1, 50))));
   register("get_swap_quote",
    "Create a short-lived (30s) simulated swap quote with fee, estimatedOutput and minimumReceived. This does NOT execute anything; the user must review and confirm it in the UI.",
    schema(Map.of("fromSymbol", symbolProp(), "toSymbol", symbolProp(),
@@ -221,5 +221,86 @@ public class CopilotTools {
    if (m != null && m.get("message") instanceof String s && !s.isBlank()) return s;
   } catch (Exception ignored) { }
   return e.getStatusText();
+ }
+
+ private static Map<String, Object> compactPortfolio(Map<String, Object> raw) {
+  if (raw == null) return Map.of();
+  Map<String, Object> compact = new LinkedHashMap<>();
+  compact.put("userId", raw.get("userId"));
+  compact.put("totalValueUsd", raw.get("totalValueUsd"));
+  if (raw.containsKey("totalPnlUsd")) compact.put("totalPnlUsd", raw.get("totalPnlUsd"));
+  Object listObj = raw.getOrDefault("assets", raw.get("balances"));
+  if (listObj instanceof List<?> list) {
+   List<Map<String, Object>> compactAssets = new ArrayList<>();
+   for (Object item : list) {
+    if (item instanceof Map<?, ?> a) {
+     Map<String, Object> asset = new LinkedHashMap<>();
+     if (a.containsKey("symbol")) asset.put("symbol", a.get("symbol"));
+     if (a.containsKey("balance")) asset.put("balance", a.get("balance"));
+     else if (a.containsKey("amount")) asset.put("balance", a.get("amount"));
+     if (a.containsKey("priceUsd")) asset.put("priceUsd", a.get("priceUsd"));
+     if (a.containsKey("valueUsd")) asset.put("valueUsd", a.get("valueUsd"));
+     compactAssets.add(asset);
+    }
+   }
+   compact.put("assets", compactAssets);
+  }
+  return compact;
+ }
+
+ private static List<Map<String, Object>> compactAssets(List<Map<String, Object>> rawList) {
+  if (rawList == null) return List.of();
+  List<Map<String, Object>> compact = new ArrayList<>();
+  for (Map<String, Object> a : rawList) {
+   compact.add(compactAsset(a));
+  }
+  return compact;
+ }
+
+ private static Map<String, Object> compactAsset(Map<String, Object> a) {
+  if (a == null) return Map.of();
+  Map<String, Object> asset = new LinkedHashMap<>();
+  if (a.containsKey("symbol")) asset.put("symbol", a.get("symbol"));
+  if (a.containsKey("name")) asset.put("name", a.get("name"));
+  if (a.containsKey("priceUsd")) asset.put("priceUsd", a.get("priceUsd"));
+  if (a.containsKey("change24hPct")) asset.put("change24hPct", a.get("change24hPct"));
+  return asset;
+ }
+
+ private static Map<String, Object> compactTransactions(Map<String, Object> page) {
+  if (page == null) return Map.of("items", List.of(), "totalItems", 0);
+  Object raw = page.get("items");
+  if (!(raw instanceof List<?> list)) return Map.of("items", List.of(), "totalItems", 0);
+  List<Map<String, Object>> compact = new ArrayList<>();
+  for (Object o : list) {
+   if (o instanceof Map<?, ?> m) {
+    Map<String, Object> entry = new LinkedHashMap<>();
+    if (m.containsKey("type")) entry.put("type", m.get("type"));
+    if (m.containsKey("status")) entry.put("status", m.get("status"));
+    if (m.containsKey("title")) entry.put("title", m.get("title"));
+    if (m.containsKey("amount")) entry.put("amount", m.get("amount"));
+    if (m.containsKey("symbol")) entry.put("symbol", m.get("symbol"));
+    if (m.containsKey("createdAt")) entry.put("createdAt", m.get("createdAt"));
+    compact.add(entry);
+   }
+  }
+  return Map.of("items", compact, "totalItems", compact.size());
+ }
+
+ private static List<Map<String, Object>> compactSwaps(List<Map<String, Object>> rawList) {
+  if (rawList == null) return List.of();
+  List<Map<String, Object>> compact = new ArrayList<>();
+  for (Map<String, Object> s : rawList) {
+   Map<String, Object> entry = new LinkedHashMap<>();
+   if (s.containsKey("fromSymbol")) entry.put("fromSymbol", s.get("fromSymbol"));
+   if (s.containsKey("toSymbol")) entry.put("toSymbol", s.get("toSymbol"));
+   if (s.containsKey("fromAmount")) entry.put("fromAmount", s.get("fromAmount"));
+   if (s.containsKey("toAmount")) entry.put("toAmount", s.get("toAmount"));
+   if (s.containsKey("state")) entry.put("state", s.get("state"));
+   if (s.containsKey("failureReason")) entry.put("failureReason", s.get("failureReason"));
+   if (s.containsKey("createdAt")) entry.put("createdAt", s.get("createdAt"));
+   compact.add(entry);
+  }
+  return compact;
  }
 }

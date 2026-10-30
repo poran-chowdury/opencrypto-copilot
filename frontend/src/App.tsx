@@ -25,6 +25,7 @@ const Wallet = page(() => import('@/pages/Wallet'), 'Wallet');
 const Status = page(() => import('@/pages/Status'), 'Status');
 const MarketLab = page(() => import('@/pages/MarketLab'), 'MarketLab');
 const Knowledge = page(() => import('@/pages/Knowledge'), 'Knowledge');
+const Assistant = page(() => import('@/pages/Assistant'), 'Assistant');
 
 export function App() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -63,6 +64,7 @@ export function App() {
                 <Route path="/status" element={<Status />} />
                 <Route path="/lab" element={<MarketLab />} />
                 <Route path="/knowledge" element={<Knowledge />} />
+                <Route path="/assistant" element={<Assistant />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
               </Suspense>

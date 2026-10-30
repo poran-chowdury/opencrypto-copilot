@@ -169,7 +169,18 @@ services:
       LLM_MODEL: "${LLM_MODEL:-}"
       LLM_API_KEY: "${LLM_API_KEY:-}"
       LLM_BASE_URL: "${LLM_BASE_URL:-}"
+      LOCAL_LLM_BASE_URL: "${LOCAL_LLM_BASE_URL:-http://ollama:11434}"
+      LOCAL_LLM_MODEL: "${LOCAL_LLM_MODEL:-qwen2.5:1.5b}"
     volumes: ["./knowledge:/app/knowledge:ro"]
+
+  # Local model for steps that see personal data (docs/ai/agentic-system.md, step 8). Opt in, since
+  # models are several GB: docker compose --profile local-llm up -d ollama
+  # then pull one: docker compose exec ollama ollama pull <model>
+  ollama:
+    image: ollama/ollama:0.6.8
+    profiles: [local-llm]
+    ports: ["${OLLAMA_HOST_PORT:-11435}:11434"]
+    volumes: ["ollama-data:/root/.ollama"]
 
   frontend:
     build: {context: ./frontend}
@@ -177,4 +188,4 @@ services:
     ports: ["5173:80"]
     depends_on: [api-gateway]
 
-volumes: {postgres-data: {}, redis-data: {}, rabbitmq-data: {}, grafana-data: {}, loki-data: {}, alloy-data: {}, tempo-data: {}}
+volumes: {postgres-data: {}, redis-data: {}, rabbitmq-data: {}, grafana-data: {}, loki-data: {}, alloy-data: {}, tempo-data: {}, ollama-data: {}}

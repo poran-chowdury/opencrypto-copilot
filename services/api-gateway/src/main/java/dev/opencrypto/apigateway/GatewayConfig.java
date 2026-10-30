@@ -1,5 +1,8 @@
 package dev.opencrypto.apigateway;
 
+import static org.springframework.cloud.gateway.support.RouteMetadataUtils.RESPONSE_TIMEOUT_ATTR;
+
+import java.time.Duration;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.ratelimit.RedisRateLimiter;
@@ -19,7 +22,8 @@ public class GatewayConfig {
  RouteLocator routes(RouteLocatorBuilder builder,
    @Value("${services.identity-url}") String identity, @Value("${services.asset-url}") String asset,
    @Value("${services.wallet-url}") String wallet, @Value("${services.transaction-url}") String transaction,
-   @Value("${services.swap-url}") String swap, @Value("${services.ai-url}") String ai) {
+   @Value("${services.swap-url}") String swap, @Value("${services.ai-url}") String ai,
+   @Value("${services.ai-response-timeout}") Duration aiTimeout) {
   Map<String, String> health = Map.of("identity", identity, "asset", asset, "wallet", wallet, "transaction", transaction, "swap", swap, "ai", ai);
   RouteLocatorBuilder.Builder r = builder.routes()
    .route("identity", p -> p.path("/api/v1/auth/**").uri(identity))
@@ -27,7 +31,10 @@ public class GatewayConfig {
    .route("wallet", p -> p.path("/api/v1/wallet/**", "/api/v1/portfolio/**").uri(wallet))
    .route("transactions", p -> p.path("/api/v1/transactions/**").uri(transaction))
    .route("swaps", p -> p.path("/api/v1/swaps/**").uri(swap))
-   .route("ai", p -> p.path("/api/v1/ai/**").uri(ai));
+   // A model answer takes seconds, not milliseconds (a CPU-only local model, 10-60 s), so this route gets
+   // its own budget, longer than the copilot's model read timeout: the service then times out first and
+   // returns its own error (LOCAL_MODEL_UNAVAILABLE) instead of the gateway's bare 504.
+   .route("ai", p -> p.path("/api/v1/ai/**").metadata(RESPONSE_TIMEOUT_ATTR, aiTimeout.toMillis()).uri(ai));
   health.forEach((name, uri) -> r.route("health-" + name, p -> p.path("/api/v1/system/" + name + "/health").and().method("GET")
    .filters(f -> f.setPath("/actuator/health")).uri(uri)));
   return r.build();

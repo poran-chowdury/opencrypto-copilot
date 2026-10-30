@@ -33,7 +33,10 @@ platform itself is built is explained in [docs/engineering](../engineering/READM
 |---|---|---|
 | `CopilotEngine` | `engine/CopilotEngine.java` | Interface you implement: `reply(Caller, ChatRequest)` → `ChatResponse`. |
 | `DeterministicCopilotEngine` | `engine/DeterministicCopilotEngine.java` | Regex baseline. Your engine has to beat it. |
-| `LlmSettings` | `engine/LlmSettings.java` | `provider`, `model`, `apiKey`, `baseUrl`, `maxToolRounds`, `timeoutSeconds` from env. |
+| `LlmSettings` | `engine/LlmSettings.java` | `provider`, `model`, `apiKey`, `baseUrl`, `maxToolRounds`, `timeoutSeconds`, `maxTokens` from env. |
+| `Models` | `engine/Models.java` | Ready-made Spring AI clients: `reasoningClient()` (Claude) and `localClient()` (Ollama), each empty until configured; `toolCallingManager()` for a hand-written loop. |
+| `SpringAiTools` | `tools/SpringAiTools.java` | The tools as Spring AI `ToolCallback`s bound to the caller and recording the trace: `forCaller(caller, trace)`, or a subset by name. |
+| `ModelPricing` | `engine/ModelPricing.java` | `estimateUsd(model, inputTokens, outputTokens)` for `usage.estimatedCostUsd`. |
 | `CopilotTools` | `tools/CopilotTools.java` | 11 allowlisted tools. `definitions()` for the model, `call(caller, name, input)` to run one. Outputs are plain JSON structures. |
 | `Caller` | `tools/Caller.java` | User id and role from request headers. Never let the model choose these. |
 | `ToolCall` | `tools/ToolCall.java` | Trace of each call; return them in `toolsExecuted` so the UI shows them. |
@@ -54,6 +57,22 @@ curl -X POST localhost:8080/api/v1/ai/tools/search_knowledge -H 'Content-Type: a
 The definitions use the `{name, description, input_schema}` shape that LLM tool-use APIs expect.
 
 ## Step 1: an LLM engine with a tool loop
+
+The roadmap for the whole agentic system (sub-agents, MCP, auth, memory, PII, policies) is
+[agentic-system.md](agentic-system.md); this page is its steps 1 and 2.
+
+With `LLM_PROVIDER=anthropic` and `LLM_API_KEY` set, `Models.reasoningClient()` gives you a Spring AI
+`ChatClient` for Claude (`claude-opus-5-5` unless `LLM_MODEL` says otherwise) and
+`SpringAiTools.forCaller(caller, trace)` gives you the tools. Two ways to run the loop, both worth doing:
+
+- **By hand first:** set `internalToolExecutionEnabled(false)` in the chat options, call the model, run
+  the requested tools with `models.toolCallingManager().executeToolCalls(prompt, response)`, append the
+  results, repeat up to `settings.maxToolRoundsOrDefault()` times. You see every round trip.
+- **Then let Spring AI loop for you** (`.toolCallbacks(tools)` on the prompt) and compare answers, latency
+  and tokens in the Assistant page.
+
+Check the finish reason before trusting the text: `refusal` (the model declined) and `max_tokens`
+(cut off) are not answers.
 
 Every `CopilotEngine` bean is registered by its `name()`. Add yours next to the deterministic engine;
 it can be picked per request (copilot dropdown in the UI, `"engine": "llm"` in the API,

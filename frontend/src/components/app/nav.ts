@@ -1,4 +1,4 @@
-import { Activity, ArrowLeftRight, BookOpen, ChartCandlestick, FlaskConical, Gauge, PieChart, Wallet, type LucideIcon } from 'lucide-react';
+import { Activity, ArrowLeftRight, BookOpen, Bot, ChartCandlestick, FlaskConical, Gauge, PieChart, Wallet, type LucideIcon } from 'lucide-react';
 
 export interface NavItem { to: string; label: string; icon: LucideIcon; keywords?: string }
 
@@ -11,6 +11,12 @@ export const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { to: '/portfolio', label: 'Portfolio', icon: PieChart, keywords: 'holdings profit loss pnl' },
       { to: '/activity', label: 'Activity', icon: Activity, keywords: 'history transactions' },
       { to: '/wallet', label: 'Wallet', icon: Wallet, keywords: 'deposit ledger balances audit' },
+    ],
+  },
+  {
+    label: 'AI',
+    items: [
+      { to: '/assistant', label: 'Assistant', icon: Bot, keywords: 'copilot agent chat ai llm' },
     ],
   },
   {

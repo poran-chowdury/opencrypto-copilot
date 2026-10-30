@@ -10,6 +10,7 @@ import dev.opencrypto.aicopilotservice.engine.CopilotEngine;
 import dev.opencrypto.aicopilotservice.engine.CopilotEngine.ChatRequest;
 import dev.opencrypto.aicopilotservice.engine.CopilotEngine.ChatResponse;
 import dev.opencrypto.aicopilotservice.engine.LlmSettings;
+import dev.opencrypto.aicopilotservice.engine.Models;
 import dev.opencrypto.aicopilotservice.knowledge.Retrievers;
 import dev.opencrypto.aicopilotservice.tools.Caller;
 import dev.opencrypto.aicopilotservice.tools.CopilotTools;
@@ -23,9 +24,10 @@ public class AiController {
  private final CopilotTools tools;
  private final Retrievers retrievers;
  private final LlmSettings llm;
+ private final Models models;
 
  public AiController(List<CopilotEngine> engines, @Value("${copilot.engine:deterministic}") String defaultEngine,
-   CopilotTools tools, Retrievers retrievers, LlmSettings llm) {
+   CopilotTools tools, Retrievers retrievers, LlmSettings llm, Models models) {
   engines.forEach(e -> {
    if (this.engines.putIfAbsent(e.name(), e) != null) throw new IllegalStateException("Duplicate copilot engine name: " + e.name());
   });
@@ -35,6 +37,7 @@ public class AiController {
   this.tools = tools;
   this.retrievers = retrievers;
   this.llm = llm;
+  this.models = models;
  }
 
  @PostMapping("/chat") public ChatResponse chat(@Valid @RequestBody ChatRequest r,
@@ -49,6 +52,7 @@ public class AiController {
   m.put("llmConnected", engines.get(defaultEngine).llmConnected());
   m.put("engines", engines.values().stream().map(e -> Map.of("name", e.name(), "llmConnected", e.llmConnected())).toList());
   m.put("llm", Map.of("provider", Objects.toString(llm.provider(), ""), "model", Objects.toString(llm.model(), ""), "configured", llm.configured()));
+  m.put("models", Map.of("reasoning", models.reasoningInfo(), "local", models.localInfo()));
   m.put("retrievers", retrievers.names());
   m.put("defaultRetriever", retrievers.defaultName());
   m.put("tools", tools.definitions().stream().map(ToolDefinition::name).toList());
