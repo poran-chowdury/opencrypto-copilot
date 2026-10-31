@@ -70,7 +70,7 @@ export function EmptyState({ children, icon }: { children: ReactNode; icon?: Rea
 
 // ---------------------------------------------------------------- status
 
-const GOOD = new Set(['COMPLETED', 'OK', 'UP', 'CLOSED', 'RUNNING', 'SUCCESS']);
+const GOOD = new Set(['COMPLETED', 'OK', 'UP', 'CLOSED', 'RUNNING', 'SUCCESS', 'CONFIRMED']);
 const BAD = new Set(['FAILED', 'DOWN', 'MISMATCH', 'OPEN', 'OUT_OF_SERVICE']);
 
 /** State with an icon and text, so it never depends on colour alone. */

@@ -4,6 +4,15 @@ server:
 spring:
   application:
     name: wallet-service
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: wallet-mcp
+        version: 0.1.0
+        protocol: streamable
+        streamable-http:
+          mcp-endpoint: /mcp
   threads:
     virtual:
       enabled: true

@@ -3,7 +3,7 @@
 [![CI/CD](https://github.com/poran-chowdury/opencrypto-copilot/actions/workflows/cd.yml/badge.svg)](https://github.com/poran-chowdury/opencrypto-copilot/actions/workflows/cd.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Java 21](https://img.shields.io/badge/Java-21-orange)
-![Spring Boot 3.4](https://img.shields.io/badge/Spring%20Boot-3.4-6db33f)
+![Spring Boot 3.5](https://img.shields.io/badge/Spring%20Boot-3.5-6db33f)
 ![React 19](https://img.shields.io/badge/React-19-61dafb)
 
 A crypto portfolio and trading platform built as a **production-style microservices system**:
@@ -24,7 +24,7 @@ on top of it ([docs/ai/projects.md](docs/ai/projects.md)).
 | **Trading**: quotes with fee, slippage and minimum received; live order tracking | Orchestrated saga over RabbitMQ (CREATED → PENDING → COMPLETED/FAILED), transactional outbox, idempotent consumers, retries + DLQs, timeout recovery |
 | **Activity**: filterable, paginated history | Read model built from events (CQRS-style) |
 | **Platform**: rate limits, health, tracing, metrics, logs, alerts | Gateway token bucket in Redis; W3C Trace Context + OpenTelemetry traces across HTTP, **RabbitMQ (through the outbox)** and **every SQL statement** in Tempo; JSON logs in Loki via Alloy; Prometheus alerts with exemplars; service map; all linked in provisioned Grafana dashboards |
-| **AI copilot** (rule-based for now) | Typed read-only tools over the APIs, pluggable engines, knowledge base. The LLM work is [phase 2](docs/ai/projects.md) |
+| **AI copilot** (rule-based for now) | Typed read-only tools over the APIs, pluggable engines, knowledge base, Spring AI clients for Claude and a local Ollama model, and an Assistant page that shows how every answer was produced. Phase 2 builds it into a production-style [agentic system](docs/ai/agentic-system.md) |
 
 ## Run it
 

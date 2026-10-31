@@ -18,7 +18,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
  // burst of 3 requests, refilling one request per minute: deterministic regardless of upstream latency
  "ratelimit.write.replenish-per-second=1", "ratelimit.write.burst=180", "ratelimit.write.tokens-per-request=60",
- "services.swap-url=http://localhost:1"})   // nothing listens: allowed requests fail upstream, which is fine here
+ "services.swap-url=http://localhost:1", "auth.enabled=false"})   // nothing listens: allowed requests fail upstream, which is fine here
 class RateLimitIT {
  @Container static GenericContainer<?> redis = new GenericContainer<>("redis:7-alpine").withExposedPorts(6379);
 

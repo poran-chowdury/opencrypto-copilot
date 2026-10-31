@@ -8,6 +8,7 @@ import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.amqp.rabbit.listener.SimpleMessageListenerContainer;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -17,6 +18,7 @@ import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.transaction.support.TransactionTemplate;
 import dev.opencrypto.platform.tracing.TraceContext;
+import dev.opencrypto.platform.tracing.TracingAutoConfiguration;
 import dev.opencrypto.platform.web.CorrelationId;
 
 /**
@@ -24,7 +26,7 @@ import dev.opencrypto.platform.web.CorrelationId;
  * Retries and dead-lettering are configured with standard Spring Boot properties
  * ({@code spring.rabbitmq.listener.simple.retry.*}, {@code default-requeue-rejected=false}).
  */
-@AutoConfiguration(afterName = {
+@AutoConfiguration(after = TracingAutoConfiguration.class, afterName = {
  "org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration",
  "org.springframework.boot.autoconfigure.jdbc.JdbcClientAutoConfiguration"})
 @ConditionalOnClass(RabbitTemplate.class)
@@ -41,11 +43,15 @@ public class MessagingAutoConfiguration {
  }
 
  @Bean
- OutboxWriter outboxWriter(JdbcClient jdbc, ObjectMapper json, TraceContext trace) { return new OutboxWriter(jdbc, json, trace); }
+ OutboxWriter outboxWriter(JdbcClient jdbc, ObjectMapper json, ObjectProvider<TraceContext> traceProvider) {
+  TraceContext trace = traceProvider.getIfAvailable(() -> TraceContext.NOOP);
+  return new OutboxWriter(jdbc, json, trace);
+ }
 
  @Bean
- OutboxPublisher outboxPublisher(JdbcClient jdbc, RabbitTemplate rabbit, TransactionTemplate tx, ObjectMapper json, MeterRegistry meters, TraceContext trace,
+ OutboxPublisher outboxPublisher(JdbcClient jdbc, RabbitTemplate rabbit, TransactionTemplate tx, ObjectMapper json, MeterRegistry meters, ObjectProvider<TraceContext> traceProvider,
    @Value("${platform.outbox.poll-interval-ms:500}") long pollIntervalMs) {
+  TraceContext trace = traceProvider.getIfAvailable(() -> TraceContext.NOOP);
   return new OutboxPublisher(jdbc, rabbit, tx, json, meters, trace, pollIntervalMs);
  }
 

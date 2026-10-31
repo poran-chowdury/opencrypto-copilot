@@ -2,6 +2,15 @@ server:
   port: ${SERVER_PORT:8084}
   shutdown: graceful
 spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: transaction-mcp
+        version: 0.1.0
+        protocol: streamable
+        streamable-http:
+          mcp-endpoint: /mcp
   application:
     name: transaction-service
   threads:

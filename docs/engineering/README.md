@@ -27,6 +27,10 @@ the same shape:
 | 10 | [Real bugs we hit](10-bugs-and-lessons.md) | 24 real problems from building this project, with root cause and fix: your "hardest bug" interview stories |
 | 11 | [Load testing](11-load-testing.md) | k6 open-model load tests, saturation and Little's law, diagnosing with traces, metastable failure, correctness under overload |
 | 12 | [Publishing on GitHub with CI/CD](12-github-ci-cd.md) | GitHub Actions, reusable workflows, matrix builds, publishing images to GHCR, SemVer releases, branch rulesets, keeping secrets out of a public repo |
+| 13 | [Foundation for the agentic system](13-agentic-foundation.md) | Upgrading Spring Boot across a monorepo, deprecated config as a time bomb, building model clients yourself (Claude + local Ollama), binding identity into tool callbacks, an agent console UI |
+| 14 | [Step 1: a plain LLM baseline](14-plain-llm-baseline.md) | Why a model without tools refuses or invents numbers, conversation history in a stateless API, finish reasons, testing LLM code against a fake model, nested timeout budgets, cold starts |
+| 15 | [Step 2: the tool-calling agent](15-tool-calling-agent.md) | The function calling loop (ReAct), binding caller context to tool callbacks, tool overload, proposed actions for state changes, hermetic testing with fake Ollama |
+| 16 | [Step 3: domain sub-agents and supervisor](16-subagents-and-supervisor.md) | Decomposing compound queries, tool overload mitigation, scoped tool boundaries per agent, multi-agent task execution and result synthesis |
 | — | [Resume bullets & interview stories](resume.md) | How to describe this project |
 
 ## The system in one picture

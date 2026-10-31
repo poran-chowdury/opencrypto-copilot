@@ -1,5 +1,6 @@
 package dev.opencrypto.platform.web;
 
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.boot.web.client.RestClientCustomizer;
@@ -18,8 +19,9 @@ import dev.opencrypto.platform.tracing.TraceContext;
 public class WebPlatformAutoConfiguration {
 
  @Bean
- FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter(TraceContext trace) {
-  FilterRegistrationBean<CorrelationIdFilter> bean = new FilterRegistrationBean<>(new CorrelationIdFilter(trace::currentTraceId));
+ FilterRegistrationBean<CorrelationIdFilter> correlationIdFilter(ObjectProvider<TraceContext> traceProvider) {
+  TraceContext trace = traceProvider.getIfAvailable();
+  FilterRegistrationBean<CorrelationIdFilter> bean = new FilterRegistrationBean<>(new CorrelationIdFilter(() -> trace != null ? trace.currentTraceId() : null));
   // after Spring's ServerHttpObservationFilter (HIGHEST_PRECEDENCE + 1), so the request's span exists
   bean.setOrder(Ordered.HIGHEST_PRECEDENCE + 2);
   return bean;

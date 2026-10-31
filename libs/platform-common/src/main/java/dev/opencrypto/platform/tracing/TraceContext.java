@@ -14,6 +14,7 @@ import org.springframework.beans.factory.ObjectProvider;
  */
 public final class TraceContext {
  public static final String TRACEPARENT = "traceparent";
+ public static final TraceContext NOOP = new TraceContext(null, null);
 
  private final ObjectProvider<Tracer> tracer;
  private final ObjectProvider<Propagator> propagator;
@@ -25,15 +26,15 @@ public final class TraceContext {
 
  /** The current trace id (32 hex chars), or null when nothing is being traced. */
  public String currentTraceId() {
-  Tracer t = tracer.getIfAvailable();
+  Tracer t = tracer == null ? null : tracer.getIfAvailable();
   Span span = t == null ? null : t.currentSpan();
   return span == null ? null : span.context().traceId();
  }
 
  /** The current span as a traceparent value, to store and continue the trace later (outbox). */
  public String currentTraceParent() {
-  Tracer t = tracer.getIfAvailable();
-  Propagator p = propagator.getIfAvailable();
+  Tracer t = tracer == null ? null : tracer.getIfAvailable();
+  Propagator p = propagator == null ? null : propagator.getIfAvailable();
   Span span = t == null ? null : t.currentSpan();
   if (span == null || p == null) return null;
   Map<String, String> carrier = new HashMap<>();
@@ -46,8 +47,8 @@ public final class TraceContext {
   * by the outbox poller) appears in the original request's trace. Returns null if tracing is off.
   */
  public Span startChildOf(String traceParent, String name, Span.Kind kind) {
-  Tracer t = tracer.getIfAvailable();
-  Propagator p = propagator.getIfAvailable();
+  Tracer t = tracer == null ? null : tracer.getIfAvailable();
+  Propagator p = propagator == null ? null : propagator.getIfAvailable();
   if (t == null || p == null || traceParent == null) return null;
   Span.Builder builder = p.extract(Map.of(TRACEPARENT, traceParent), Map::get);
   return builder.name(name).kind(kind).start();
@@ -55,12 +56,12 @@ public final class TraceContext {
 
  /** Writes the span's context (traceparent, plus any baggage) into a carrier such as message headers. */
  public <C> void inject(Span span, C carrier, Propagator.Setter<C> setter) {
-  Propagator p = propagator.getIfAvailable();
+  Propagator p = propagator == null ? null : propagator.getIfAvailable();
   if (span != null && p != null) p.inject(span.context(), carrier, setter);
  }
 
  public Tracer.SpanInScope inScope(Span span) {
-  Tracer t = tracer.getIfAvailable();
+  Tracer t = tracer == null ? null : tracer.getIfAvailable();
   return span == null || t == null ? null : t.withSpan(span);
  }
 

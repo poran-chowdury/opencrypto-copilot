@@ -5,6 +5,24 @@ server:
 spring:
   application:
     name: ai-copilot-service
+  ai:
+    mcp:
+      client:
+        enabled: true
+        name: ai-copilot-mcp-client
+        version: 0.1.0
+        type: sync
+        streamable-http:
+          connections:
+            wallet-mcp:
+              url: ${WALLET_SERVICE_URL:http://localhost:8083}
+              endpoint: /mcp
+            transaction-mcp:
+              url: ${TRANSACTION_SERVICE_URL:http://localhost:8084}
+              endpoint: /mcp
+            swap-mcp:
+              url: ${SWAP_SERVICE_URL:http://localhost:8085}
+              endpoint: /mcp
 management:
   endpoints:
     web:
@@ -27,13 +45,23 @@ copilot:
   knowledge:
     path: ${KNOWLEDGE_PATH:knowledge}       # Markdown corpus, relative to the working directory
     retriever: ${KNOWLEDGE_RETRIEVER:keyword}
-  llm:                                      # read by the LLM engine you build (LlmSettings)
+  llm:                                      # reasoning model (LlmSettings); provider=anthropic + key builds a Claude client
     provider: ${LLM_PROVIDER:}
-    model: ${LLM_MODEL:}
+    model: ${LLM_MODEL:claude-opus-5-5}
     api-key: ${LLM_API_KEY:}
     base-url: ${LLM_BASE_URL:}
     max-tool-rounds: 5
-    timeout-seconds: 30
+    max-tokens: 16000
+    timeout-seconds: 120                    # one model request; adaptive thinking can take a while
+  local-llm:                                # local Ollama model for steps that see personal data (LocalModelSettings)
+    base-url: ${LOCAL_LLM_BASE_URL:http://localhost:11435}
+    model: ${LOCAL_LLM_MODEL:qwen2.5:1.5b}
+    timeout-seconds: ${LOCAL_LLM_TIMEOUT_SECONDS:300}
+  pricing:                                  # USD per million tokens, Anthropic list prices (checked 2026-10); for usage.estimatedCostUsd
+    models:
+      claude-opus-5-5: {input-per-million: 4.00, output-per-million: 20.00}
+      claude-sonnet-5-5: {input-per-million: 2.00, output-per-million: 10.00}
+      claude-haiku-5-5: {input-per-million: 0.10, output-per-million: 0.50}
 logging:
   pattern:
     level: "%5p [${spring.application.name},%X{correlationId:-}]"

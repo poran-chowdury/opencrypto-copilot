@@ -10,9 +10,10 @@
   <artifactId>api-gateway</artifactId>
 
   <dependencies>
-    <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-gateway</artifactId></dependency>
+    <dependency><groupId>org.springframework.cloud</groupId><artifactId>spring-cloud-starter-gateway-server-webflux</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-data-redis-reactive</artifactId></dependency>
     <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-actuator</artifactId></dependency>
+    <dependency><groupId>com.nimbusds</groupId><artifactId>nimbus-jose-jwt</artifactId><version>9.37.3</version></dependency>
     <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-registry-prometheus</artifactId></dependency>
     <!-- W3C Trace Context + OpenTelemetry: spans for every request and downstream call, exported over OTLP -->
     <dependency><groupId>io.micrometer</groupId><artifactId>micrometer-tracing-bridge-otel</artifactId></dependency>

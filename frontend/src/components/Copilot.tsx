@@ -1,20 +1,18 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUp, Bot, ChevronRight, Sparkles, Wrench, X } from 'lucide-react';
-import { api, type ChatMessage, type ChatResponse, type Quote, type SwapOrder } from '@/lib/api';
-import { useIdentity } from '@/lib/identity';
+import { Link } from 'react-router-dom';
+import { ArrowUp, Bot, ChevronRight, Maximize2, Sparkles, Wrench, X } from 'lucide-react';
+import { api, type ChatResponse } from '@/lib/api';
+import { useChat } from '@/lib/use-chat';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '@/components/ui/input-group';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { OrderTracker, QuoteReview } from '@/components/trade/SwapCards';
-import { describeError } from '@/components/common';
+import { ProposedActionCard, ToolCallCard } from '@/components/assistant/parts';
 
-interface Turn { role: 'user' | 'assistant'; content: string; response?: ChatResponse; order?: SwapOrder; dismissed?: boolean; error?: boolean }
-
-const SUGGESTIONS = [
+export const SUGGESTIONS = [
   'What is my portfolio worth?',
   'What changed in my portfolio?',
   'What if BTC drops 20%?',
@@ -25,31 +23,14 @@ const SUGGESTIONS = [
 
 /** Chat panel. Shows every tool call behind an answer, and turns proposed swaps into an explicit confirm step. */
 export function Copilot({ onClose }: { onClose: () => void }) {
-  const { user, role } = useIdentity();
-  const [turns, setTurns] = useState<Turn[]>([]);
+  const { turns, busy, engine, setEngine, send, patch } = useChat();
   const [input, setInput] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [engine, setEngine] = useState('default');
   const status = useQuery({ queryKey: ['ai-status'], queryFn: api.aiStatus, staleTime: 60_000 });
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { setTurns([]); }, [user, role]);
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' }); }, [turns, busy]);
 
-  const send = async (message: string) => {
-    if (!message.trim() || busy) return;
-    const history: ChatMessage[] = turns.slice(-20).map(t => ({ role: t.role, content: t.content }));
-    setTurns(t => [...t, { role: 'user', content: message }]);
-    setInput(''); setBusy(true);
-    try {
-      const response = await api.chat(message, history, engine === 'default' ? undefined : engine);
-      setTurns(t => [...t, { role: 'assistant', content: response.answer, response }]);
-    } catch (e) {
-      const d = describeError(e);
-      setTurns(t => [...t, { role: 'assistant', content: `${d.title}${d.detail ? ` (${d.detail})` : ''}`, error: true }]);
-    } finally { setBusy(false); }
-  };
-  const patch = (i: number, p: Partial<Turn>) => setTurns(t => t.map((x, j) => (j === i ? { ...x, ...p } : x)));
+  const submit = (message: string) => { if (!message.trim() || busy) return; setInput(''); send(message); };
   const active = status.data?.engines.find(e => e.name === (engine === 'default' ? status.data?.engine : engine));
 
   return (
@@ -67,6 +48,7 @@ export function Copilot({ onClose }: { onClose: () => void }) {
             {(status.data?.engines ?? []).filter(e => e.name !== status.data?.engine).map(e => <SelectItem key={e.name} value={e.name}>{e.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Button variant="ghost" size="icon-sm" asChild><Link to="/assistant" onClick={onClose} aria-label="Open the full Assistant page"><Maximize2 /></Link></Button>
         <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="Close copilot"><X /></Button>
       </header>
 
@@ -77,24 +59,17 @@ export function Copilot({ onClose }: { onClose: () => void }) {
               <span className="mx-auto flex size-10 items-center justify-center rounded-full bg-primary/15 text-primary"><Bot className="size-5" aria-hidden="true" /></span>
               <p className="text-sm text-muted-foreground">Ask about your simulated portfolio. Every answer shows the tools behind it — the same tools an LLM would call.</p>
               <div className="flex flex-wrap justify-center gap-1.5">
-                {SUGGESTIONS.map(s => <Button key={s} size="xs" variant="secondary" className="rounded-full" onClick={() => send(s)}>{s}</Button>)}
+                {SUGGESTIONS.map(s => <Button key={s} size="xs" variant="secondary" className="rounded-full" onClick={() => submit(s)}>{s}</Button>)}
               </div>
             </div>
           )}
-          {turns.map((t, i) => (
-            <div key={i} className={cn('flex flex-col gap-2', t.role === 'user' && 'items-end')}>
+          {turns.map(t => (
+            <div key={t.id} className={cn('flex flex-col gap-2', t.role === 'user' && 'items-end')}>
               <div className={cn('max-w-[90%] rounded-2xl px-3 py-2 text-sm whitespace-pre-wrap',
                 t.role === 'user' ? 'rounded-br-sm bg-primary text-primary-foreground' : 'rounded-bl-sm bg-muted',
                 t.error && 'bg-down/10 text-down')}>{t.content}</div>
               {t.response && <Trace response={t.response} />}
-              {t.response?.proposedAction?.type === 'EXECUTE_SWAP_QUOTE' && !t.dismissed && !t.order && (
-                <div className="w-full rounded-xl border border-primary/40 bg-card p-3">
-                  <p className="mb-2 text-xs font-medium text-primary">Proposed action — needs your confirmation</p>
-                  <QuoteReview compact quote={t.response.proposedAction.payload as unknown as Quote}
-                    onExecuted={o => patch(i, { order: o })} onCancel={() => patch(i, { dismissed: true })} />
-                </div>
-              )}
-              {t.order && <div className="w-full rounded-xl border bg-card p-3"><OrderTracker compact order={t.order} /></div>}
+              <ProposedActionCard compact turn={t} onPatch={p => patch(t.id, p)} />
             </div>
           ))}
           {busy && <div className="w-fit rounded-2xl rounded-bl-sm bg-muted px-3 py-2 text-sm text-muted-foreground"><span className="animate-pulse">Thinking…</span></div>}
@@ -102,13 +77,14 @@ export function Copilot({ onClose }: { onClose: () => void }) {
         </div>
       </ScrollArea>
 
-      <form className="border-t p-3" onSubmit={(e: FormEvent) => { e.preventDefault(); send(input); }}>
+      <form className="border-t p-3" onSubmit={(e: FormEvent) => { e.preventDefault(); submit(input); }}>
         <InputGroup>
           <InputGroupTextarea aria-label="Message" placeholder="Ask the copilot…" value={input} maxLength={2000} rows={1} className="max-h-32 min-h-9"
-            onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(input); } }} />
+            onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(input); } }} />
           <InputGroupAddon align="block-end">
             <span className="text-[11px] text-muted-foreground">Enter to send · Shift+Enter for a new line</span>
-            <InputGroupButton type="submit" variant="default" size="icon-xs" className="ml-auto rounded-full" disabled={busy || !input.trim()} aria-label="Send"><ArrowUp /></InputGroupButton>
+            {/* aria-disabled, not disabled: InputGroup dims everything (to 50% opacity) when it contains a disabled control, which failed contrast. submit() ignores empty input. */}
+            <InputGroupButton type="submit" variant="default" size="icon-xs" className="ml-auto rounded-full aria-disabled:opacity-50" aria-disabled={busy || !input.trim()} aria-label="Send"><ArrowUp /></InputGroupButton>
           </InputGroupAddon>
         </InputGroup>
       </form>
@@ -128,18 +104,7 @@ function Trace({ response }: { response: ChatResponse }) {
             {response.toolsExecuted.length} tool call{response.toolsExecuted.length > 1 ? 's' : ''}: {response.toolsExecuted.map(t => t.name).join(', ')} · {response.engine}
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-1.5 space-y-2">
-            {response.toolsExecuted.map((t, i) => (
-              <div key={i} className="rounded-lg border bg-card p-2">
-                <div className="flex items-center gap-2"><code>{t.name}</code><span>{t.durationMs} ms</span>{t.error && <span className="text-down">✕ {t.error}</span>}</div>
-                <pre className="mt-1 max-h-40 overflow-auto rounded bg-muted p-1.5 text-[10px]">{JSON.stringify(t.input, null, 2)}</pre>
-                {t.output != null && (
-                  <Collapsible>
-                    <CollapsibleTrigger className="mt-1 hover:text-foreground">output</CollapsibleTrigger>
-                    <CollapsibleContent><pre className="mt-1 max-h-60 overflow-auto rounded bg-muted p-1.5 text-[10px]">{JSON.stringify(t.output, null, 2)}</pre></CollapsibleContent>
-                  </Collapsible>
-                )}
-              </div>
-            ))}
+            {response.toolsExecuted.map((t, i) => <ToolCallCard key={i} call={t} />)}
           </CollapsibleContent>
         </Collapsible>
       )}

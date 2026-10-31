@@ -14,8 +14,9 @@ import {
   DropdownMenuRadioItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Badge } from '@/components/ui/badge';
 import { useMarketStatus } from '@/lib/queries';
-import { isValidUser, useIdentity } from '@/lib/identity';
+import { isValidUser, useIdentity, PRESET_USERS } from '@/lib/identity';
 import { LiveDot } from '@/components/market/primitives';
 import type { DemoRole } from '@/lib/api';
 
@@ -77,7 +78,7 @@ function ThemeMenu() {
 
 /** Demo identity (sent as X-Demo-User / X-Demo-Role). Each account id has its own simulated wallet. */
 function AccountMenu() {
-  const { user, role, switchTo } = useIdentity();
+  const { user, role, tier, switchTo } = useIdentity();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(user);
   const valid = isValidUser(draft);
@@ -89,18 +90,48 @@ function AccountMenu() {
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="h-9 gap-2 px-1.5">
             <Avatar className="size-7" aria-hidden="true"><AvatarFallback className="bg-primary text-xs font-semibold text-primary-foreground">{user.slice(0, 2).toUpperCase()}</AvatarFallback></Avatar>
-            <span className="sr-only md:not-sr-only md:max-w-28 md:truncate md:text-sm">{user}</span>
+            <div className="flex items-center gap-1.5">
+              <span className="sr-only md:not-sr-only md:max-w-28 md:truncate md:text-sm font-medium">{user}</span>
+              <Badge variant="outline" className="hidden text-[10px] uppercase font-semibold tracking-wider lg:inline-flex">
+                {tier}
+              </Badge>
+            </div>
             <span className="sr-only">account menu</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-60">
+        <DropdownMenuContent align="end" className="w-64">
           <DropdownMenuLabel className="font-normal">
-            <div className="text-sm font-medium">{user}</div>
-            <div className="text-xs text-muted-foreground">Demo account · role {role}</div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-semibold">{user}</span>
+              <Badge variant="secondary" className="text-[10px] uppercase">{tier}</Badge>
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">OIDC RS256 JWT · {role}</div>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
+          <DropdownMenuLabel className="text-xs text-muted-foreground">Pre-configured Accounts</DropdownMenuLabel>
           <DropdownMenuGroup>
-            <DropdownMenuItem onClick={() => { setDraft(user); setOpen(true); }}><UserRound /> Switch account…</DropdownMenuItem>
+            {PRESET_USERS.map(p => (
+              <DropdownMenuItem
+                key={p.id}
+                onClick={() => switchTo(p.id, p.role)}
+                className="flex items-center justify-between py-1.5"
+              >
+                <div>
+                  <div className="font-medium text-xs">{p.name} ({p.id})</div>
+                  <div className="text-[10px] text-muted-foreground">{p.description}</div>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Badge variant={p.tier === 'PRIVILEGED' ? 'default' : p.tier === 'PREMIUM' ? 'secondary' : 'outline'} className="text-[9px]">
+                    {p.tier}
+                  </Badge>
+                  {user === p.id && <Check className="size-3.5 text-primary" />}
+                </div>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuGroup>
+          <DropdownMenuSeparator />
+          <DropdownMenuGroup>
+            <DropdownMenuItem onClick={() => { setDraft(user); setOpen(true); }}><UserRound /> Custom account…</DropdownMenuItem>
           </DropdownMenuGroup>
           <DropdownMenuSeparator />
           <DropdownMenuLabel className="text-xs text-muted-foreground">Role (sent as X-Demo-Role)</DropdownMenuLabel>
@@ -116,7 +147,7 @@ function AccountMenu() {
           <form onSubmit={submit} className="grid gap-4">
             <DialogHeader>
               <DialogTitle>Switch demo account</DialogTitle>
-              <DialogDescription>Every account id gets its own simulated wallet with 10,000 USD. No password: this stands in for a real login.</DialogDescription>
+              <DialogDescription>Every account id gets its own simulated wallet with 10,000 USD. Acquires a signed RS256 JWT token from identity-service.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-2">
               <Label htmlFor="demo-user">Account id</Label>

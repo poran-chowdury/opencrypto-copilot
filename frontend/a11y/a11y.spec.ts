@@ -15,7 +15,7 @@ mkdirSync(reportDir, { recursive: true });
 interface SeededIssue { id: string; selector: string; axeRule: string | null; description: string }
 const answerKey = JSON.parse(readFileSync(join(here, 'seeded-issues.json'), 'utf-8')) as { page: string; issues: SeededIssue[] };
 
-const APP_PAGES = ['/', '/assets/BTC', '/portfolio', '/trade', '/activity', '/wallet', '/status', '/lab', '/knowledge'];
+const APP_PAGES = ['/', '/assets/BTC', '/portfolio', '/trade', '/activity', '/wallet', '/status', '/lab', '/knowledge', '/assistant'];
 
 for (const page of APP_PAGES) {
   test(`app page ${page} has no serious or critical violations`, async ({ page: p }, testInfo) => {

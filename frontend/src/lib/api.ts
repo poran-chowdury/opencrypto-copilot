@@ -63,8 +63,17 @@ export interface Activity { id: string; type: 'SWAP' | 'DEPOSIT' | 'RESET'; refe
 export interface ToolCall { name: string; input: Record<string, unknown>; output: unknown; error: string | null; durationMs: number }
 export interface ProposedAction { type: string; description: string; payload: Record<string, unknown>; requiresUserConfirmation: boolean }
 export interface ChatMessage { role: 'user' | 'assistant'; content: string }
-export interface ChatResponse { answer: string; mode: string; engine: string; llmConnected: boolean; toolsExecuted: ToolCall[]; proposedAction: ProposedAction | null; caveats: string[]; usage: Record<string, unknown> }
-export interface AiStatus { engine: string; llmConnected: boolean; engines: { name: string; llmConnected: boolean }[]; llm: { provider: string; model: string; configured: boolean }; retrievers: string[]; defaultRetriever: string; tools: string[] }
+/** Free-form on the server; these are the fields engines are expected to report (see ModelPricing). */
+export interface ChatUsage { model?: string; inputTokens?: number; outputTokens?: number; estimatedCostUsd?: number; [key: string]: unknown }
+export interface ChatResponse { answer: string; mode: string; engine: string; llmConnected: boolean; toolsExecuted: ToolCall[]; proposedAction: ProposedAction | null; caveats: string[]; usage: ChatUsage | null }
+/** A model client the platform has configured for engines to use: Claude for reasoning, a local model for sensitive steps. */
+export interface ModelInfo { provider: string; model: string; configured: boolean; baseUrl?: string }
+export interface McpServerInfo { name: string; version: string; connected: boolean; tools: string[]; error?: string }
+export interface AiStatus {
+  engine: string; llmConnected: boolean; engines: { name: string; llmConnected: boolean }[]; llm: { provider: string; model: string; configured: boolean };
+  models?: { reasoning: ModelInfo; local: ModelInfo }; retrievers: string[]; defaultRetriever: string; tools: string[];
+  mcpServers?: McpServerInfo[];
+}
 export interface KnowledgeDocument { id: string; title: string; version: string; status: string; publishedAt: string | null; validUntil: string | null; accessScope: string; sourceType: string; trust: string; supersedes: string | null; tags: string[]; sourcePath: string }
 export interface KnowledgeHit { chunkId: string; documentId: string; title: string; section: string; version: string; status: string; publishedAt: string | null; validUntil: string | null; sourceType: string; trust: string; sourcePath: string; score: number; text: string }
 
@@ -83,11 +92,39 @@ let demoRole: DemoRole = 'user';
 export function setDemoUser(user: string) { demoUser = user; }
 export function setDemoRole(role: DemoRole) { demoRole = role; }
 
+export interface AuthResponse {
+  token: string;
+  tokenType: string;
+  expiresIn: number;
+  userId: string;
+  tier: string;
+  roles: string[];
+}
+
+export interface AuthUser {
+  userId: string;
+  name: string;
+  email: string;
+  tier: string;
+  roles: string[];
+}
+
+let authToken: string | null = typeof localStorage !== 'undefined' ? localStorage.getItem('oc.jwt') : null;
+export function setAuthToken(token: string | null) {
+  authToken = token;
+  if (typeof localStorage !== 'undefined') {
+    if (token) localStorage.setItem('oc.jwt', token);
+    else localStorage.removeItem('oc.jwt');
+  }
+}
+export function getAuthToken() { return authToken; }
+
 /** Latest rate-limit headers seen from the gateway (shown on the status page). */
 export const rateLimitInfo: { remaining?: number; burst?: number; replenish?: number } = {};
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
+  if (authToken) headers.set('Authorization', `Bearer ${authToken}`);
   headers.set('X-Demo-User', demoUser);
   headers.set('X-Demo-Role', demoRole);
   if (init.body) headers.set('Content-Type', 'application/json');
@@ -170,6 +207,11 @@ export const api = {
 
   // system
   health: (service: string) => request<{ status: string; components?: Record<string, { status: string }> }>(`/api/v1/system/${service}/health`),
+
+  // auth (OIDC / JWT)
+  login: (username: string, password = 'password') => post<AuthResponse>('/api/v1/auth/login', { username, password }),
+  authMe: () => request<Record<string, unknown>>('/api/v1/auth/me'),
+  authUsers: () => request<AuthUser[]>('/api/v1/auth/users'),
 
   // AI
   chat: (message: string, history: ChatMessage[], engine?: string) => post<ChatResponse>('/api/v1/ai/chat', { message, history, engine }),
