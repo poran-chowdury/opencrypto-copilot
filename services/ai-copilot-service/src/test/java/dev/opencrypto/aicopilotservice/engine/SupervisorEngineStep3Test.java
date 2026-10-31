@@ -39,7 +39,8 @@ import dev.opencrypto.aicopilotservice.tools.PlatformClient;
  "copilot.knowledge.path=../../knowledge",
  "copilot.llm.provider=",
  "copilot.llm.api-key=",
- "copilot.local-llm.model=qwen2.5:3b"
+ "copilot.local-llm.model=qwen2.5:3b",
+ "spring.ai.mcp.client.enabled=false"
 })
 class SupervisorEngineStep3Test {
  static final List<JsonNode> requests = new CopyOnWriteArrayList<>();

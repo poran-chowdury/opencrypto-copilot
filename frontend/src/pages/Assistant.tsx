@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ArrowUp, Bot, BrainCircuit, Cpu, MessageSquarePlus, ScanSearch, ShieldCheck, Sparkles, Wrench } from 'lucide-react';
+import { ArrowUp, Bot, BrainCircuit, Cpu, MessageSquarePlus, ScanSearch, Server, ShieldCheck, Sparkles, Wrench } from 'lucide-react';
 import { api, type ModelInfo } from '@/lib/api';
 import { useChat, type Turn } from '@/lib/use-chat';
 import { usd } from '@/lib/format';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -64,6 +65,42 @@ export function Assistant() {
         <ModelTile icon={<Cpu />} label="Local model" info={status.data?.models?.local} hint="Runs on this machine, for steps that see personal data" />
         <PlatformTile icon={<Wrench />} label="Tools" value={status.data ? `${status.data.tools.length} read-only` : '…'} hint="Typed and allowlisted; the caller comes from the request, never the model" />
       </section>
+
+      {status.data?.mcpServers && status.data.mcpServers.length > 0 && (
+        <Card size="sm">
+          <CardHeader className="py-2.5 px-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Server className="size-4 text-primary" aria-hidden="true" />
+                <CardTitle className="text-sm font-semibold">Model Context Protocol (MCP) Domain Servers & Tools</CardTitle>
+              </div>
+              <span className="text-xs text-muted-foreground font-medium">
+                {status.data.mcpServers.filter(s => s.connected).length}/{status.data.mcpServers.length} Servers Active · Streamable HTTP
+              </span>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0 pb-3 px-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {status.data.mcpServers.map(s => (
+                <div key={s.name} className="flex flex-col gap-2 rounded-lg border bg-muted/40 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-xs font-semibold">{s.name}</span>
+                    <StatusBadge state={s.connected ? 'UP' : 'DOWN'} />
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">v{s.version} · Streamable HTTP /mcp</div>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {s.tools.map(t => (
+                      <Badge key={t} variant="secondary" className="font-mono text-[10px] px-1.5 py-0">
+                        {t}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="flex h-[calc(100svh-22rem)] min-h-[480px] flex-col gap-0 py-0 lg:col-span-3">

@@ -2,6 +2,15 @@ server:
   port: ${SERVER_PORT:8085}
   shutdown: graceful
 spring:
+  ai:
+    mcp:
+      server:
+        enabled: true
+        name: swap-mcp
+        version: 0.1.0
+        protocol: streamable
+        streamable-http:
+          mcp-endpoint: /mcp
   application:
     name: swap-service
   threads:

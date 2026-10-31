@@ -74,7 +74,10 @@ public class RateLimitFilter implements GlobalFilter, Ordered {
  }
 
  static String clientKey(ServerHttpRequest r) {
-  String user = r.getHeaders().getFirst("X-Demo-User");
+  String user = r.getHeaders().getFirst("X-Auth-User");
+  if (user == null || user.isBlank()) {
+   user = r.getHeaders().getFirst("X-Demo-User");
+  }
   if (user != null && USER.matcher(user).matches()) return "user:" + user;
   String forwarded = r.getHeaders().getFirst("X-Forwarded-For");
   if (forwarded != null && !forwarded.isBlank()) return "ip:" + forwarded.split(",")[0].trim();

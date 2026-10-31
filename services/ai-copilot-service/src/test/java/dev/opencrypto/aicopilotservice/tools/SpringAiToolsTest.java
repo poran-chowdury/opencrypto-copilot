@@ -10,6 +10,8 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 import dev.opencrypto.aicopilotservice.knowledge.Retrievers;
+import io.modelcontextprotocol.client.McpSyncClient;
+import io.modelcontextprotocol.spec.McpSchema;
 
 class SpringAiToolsTest {
  private final ObjectMapper json = new ObjectMapper();
@@ -54,6 +56,26 @@ class SpringAiToolsTest {
    .extracting(c -> c.getToolDefinition().name()).containsExactlyInAnyOrder("get_portfolio", "get_transactions");
   assertThatThrownBy(() -> adapter.forCaller(alice, new ArrayList<>(), List.of("transfer_funds")))
    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("transfer_funds");
+ }
+
+ @Test void mcpClientDelegationWorksWhenAvailable() throws Exception {
+  McpSyncClient mcp = mock(McpSyncClient.class);
+  when(mcp.listTools()).thenReturn(new McpSchema.ListToolsResult(
+   List.of(McpSchema.Tool.builder().name("get_portfolio").build()), null));
+  when(mcp.callTool(any())).thenReturn(new McpSchema.CallToolResult(
+   List.of(new McpSchema.TextContent("{\"userId\": \"alice\", \"totalValueUsd\": 500.0}")), false));
+
+  SpringAiTools mcpAdapter = new SpringAiTools(tools, json, List.of(mcp));
+  List<ToolCall> trace = new ArrayList<>();
+  String result = byName(mcpAdapter.forCaller(alice, trace), "get_portfolio").call("{}");
+
+  verify(mcp).callTool(argThat(req -> req.name().equals("get_portfolio")));
+  verify(platform, never()).portfolio(any());
+  assertThat(json.readValue(result, Map.class)).containsEntry("userId", "alice");
+  assertThat(trace).singleElement().satisfies(c -> {
+   assertThat(c.name()).isEqualTo("get_portfolio");
+   assertThat(c.ok()).isTrue();
+  });
  }
 
  private static ToolCallback byName(List<ToolCallback> callbacks, String name) {

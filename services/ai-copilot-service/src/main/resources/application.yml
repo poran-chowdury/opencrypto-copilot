@@ -5,6 +5,24 @@ server:
 spring:
   application:
     name: ai-copilot-service
+  ai:
+    mcp:
+      client:
+        enabled: true
+        name: ai-copilot-mcp-client
+        version: 0.1.0
+        type: sync
+        streamable-http:
+          connections:
+            wallet-mcp:
+              url: ${WALLET_SERVICE_URL:http://localhost:8083}
+              endpoint: /mcp
+            transaction-mcp:
+              url: ${TRANSACTION_SERVICE_URL:http://localhost:8084}
+              endpoint: /mcp
+            swap-mcp:
+              url: ${SWAP_SERVICE_URL:http://localhost:8085}
+              endpoint: /mcp
 management:
   endpoints:
     web:
